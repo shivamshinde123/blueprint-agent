@@ -908,15 +908,16 @@ async def discover(
     allowlist: Allowlist | None = None,
     config: BrowserConfig | None = None,
     escalate: EscalateFn | None = None,
+    enable_escalation: bool = False,
 ) -> DiscoveryResult:
     """Run one discovery pass and write the artifact if it succeeded."""
     from pathlib import Path
 
+    from src.replay.engine import _as_intervention_log, _escalation
+
     llm = llm or LLMClient()
     allowlist = allowlist or Allowlist.load()
     config = config or BrowserConfig()
-
-    agent = DiscoveryAgent(llm=llm, allowlist=allowlist, escalate=escalate)
 
     # The run log needs an artifact for redaction, but the artifact does not
     # exist yet. A minimal stand-in carries the parameter sensitivity, which is
@@ -928,14 +929,26 @@ async def discover(
 
     async with browser_session(config) as session:
         run_log.browser = await session.viewport_report()
-        result = await agent.run(
-            goal=goal,
-            url=url,
-            params=params,
-            capability_id=capability_id,
-            session=session,
-            run_log=run_log,
-        )
+
+        async with _escalation(session, capability_id, enable_escalation) as handoff:
+            agent = DiscoveryAgent(
+                llm=llm,
+                allowlist=allowlist,
+                escalate=escalate
+                or (handoff.escalate_to_human if handoff else None),
+            )
+            result = await agent.run(
+                goal=goal,
+                url=url,
+                params=params,
+                capability_id=capability_id,
+                session=session,
+                run_log=run_log,
+            )
+
+            if handoff:
+                for record in handoff.interventions:
+                    run_log.record_intervention(_as_intervention_log(record))
 
         if result.artifact:
             path = Path(output_path)

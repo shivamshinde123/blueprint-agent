@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import time
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Any, Awaitable, Callable
@@ -779,8 +780,15 @@ async def replay(
     allowlist: Allowlist | None = None,
     llm: LLMClient | None = None,
     escalate: EscalateFn | None = None,
+    enable_escalation: bool = False,
 ) -> tuple[ReplayResult, RunLog]:
-    """Validate, execute, and write the evidence log."""
+    """Validate, execute, and write the evidence log.
+
+    ``enable_escalation`` starts the operator console and wires a handoff
+    manager to the live session. It is a flag rather than a caller-supplied
+    callable because the manager needs the browser, which does not exist until
+    this function opens it.
+    """
     allowlist = allowlist or Allowlist.load()
 
     preflight = preflight_replay(
@@ -788,19 +796,9 @@ async def replay(
         params,
         allowlist=allowlist,
         mode=mode,
-        has_handoff=escalate is not None,
+        has_handoff=escalate is not None or enable_escalation,
     )
     resolved_mode = preflight.mode
-
-    # Strict mode contacts no model, so it must not hold a client at all --
-    # that is what makes "zero LLM calls" a structural guarantee rather than
-    # a promise the code could break later.
-    engine = ReplayEngine(
-        artifact,
-        mode=resolved_mode,
-        llm=None if resolved_mode is ReplayMode.STRICT else llm,
-        escalate=escalate,
-    )
 
     run_log = RunLog.start(
         artifact=artifact,
@@ -811,7 +809,57 @@ async def replay(
 
     async with browser_session(artifact.replay_config.browser) as session:
         run_log.browser = await session.viewport_report()
-        result = await engine.run(session, params, run_log)
+
+        async with _escalation(
+            session, artifact.capability_id, enable_escalation
+        ) as handoff:
+            # Strict mode contacts no model, so it must not hold a client at
+            # all -- that is what makes "zero LLM calls" structural rather than
+            # a promise a later edit could break.
+            engine = ReplayEngine(
+                artifact,
+                mode=resolved_mode,
+                llm=None if resolved_mode is ReplayMode.STRICT else llm,
+                escalate=escalate or (handoff.escalate_to_human if handoff else None),
+            )
+            result = await engine.run(session, params, run_log)
+
+            if handoff:
+                for record in handoff.interventions:
+                    run_log.record_intervention(_as_intervention_log(record))
 
     run_log.write(settings.EVIDENCE_DIR / f"{run_log.run_id}.json")
     return result, run_log
+
+
+@asynccontextmanager
+async def _escalation(session: Session, capability_id: str, enabled: bool):
+    """Run the operator console for the lifetime of a flow, if asked."""
+    if not enabled:
+        yield None
+        return
+
+    from src.escalation.console import ConsoleServer
+    from src.escalation.handoff import SessionHandoffManager
+
+    manager = SessionHandoffManager(session=session, capability_id=capability_id)
+    async with ConsoleServer():
+        log.info("operator console ready; session %s", manager.session_id)
+        yield manager
+
+
+def _as_intervention_log(record: Any) -> Any:
+    from src.evidence.logger import InterventionLog
+
+    return InterventionLog(
+        session_id=record.session_id,
+        step_id=record.step_id,
+        reason=record.reason,
+        started_at=record.started_at,
+        resumed_at=record.resumed_at,
+        duration_s=record.duration_s,
+        screenshot_before=record.screenshot_before,
+        screenshot_after=record.screenshot_after,
+        url_before=record.url_before,
+        url_after=record.url_after,
+    )

@@ -1,0 +1,51 @@
+{
+  "_comment": "Example tenant override. Bank A runs the same OrangeHRM build as everyone else, but on their own host, with a renamed Search button and a branding header that pushes every screenshot coordinate down. One file, no re-recording. See PLAN.md 10.2.",
+
+  "base_artifact": "golden_artifact.json",
+  "tenant_id": "bank_a",
+  "tenant_name": "Bank A",
+
+  "overrides": {
+    "target.url": "https://banka.orangehrm.example.com",
+    "target.app_name": "OrangeHRM (Bank A)",
+
+    "steps[0].url": "https://banka.orangehrm.example.com/web/index.php/auth/login",
+
+    "steps[6].locators.primary.methods[0].name": "Find",
+    "steps[6].locators.fallback.coordinates.y": 512,
+
+    "known_interstitials[+]": {
+      "name": "bank_a_welcome_banner",
+      "detect": {
+        "condition": "element_visible",
+        "timeout_ms": 250,
+        "on_fail": "retry",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "available": true,
+            "methods": [
+              { "method": "get_by_role", "role": "button", "name": "Dismiss" }
+            ]
+          }
+        }
+      },
+      "dismiss": {
+        "dismiss_action": "click",
+        "timeout_ms": 4000,
+        "on_timeout": "continue",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "available": true,
+            "methods": [
+              { "method": "get_by_role", "role": "button", "name": "Dismiss" }
+            ]
+          }
+        }
+      }
+    }
+  },
+
+  "notes": "Coordinate offset of +60px accounts for Bank A's branding header. Reviewed 2026-08-20."
+}
