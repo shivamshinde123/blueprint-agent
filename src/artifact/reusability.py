@@ -108,6 +108,18 @@ def embeds(text: str | None, value: str) -> bool:
     return value_words <= text_words or text_words <= value_words
 
 
+def unescape_regex(pattern: str) -> str:
+    r"""Strip one level of regex escaping, so a literal reads as a literal.
+
+    ``\$29\.99`` is the string ``$29.99`` wearing backslashes. Without this
+    the comparison misses it entirely: the backslashes break a substring
+    test, and the tokens that remain ("29", "99") sit below the length
+    floor. A shape like ``\$[\d,.]+`` unescapes to ``$[d,.]+`` and still
+    matches nothing, which is exactly the distinction the rule must make.
+    """
+    return re.sub(r"\\(.)", r"\1", pattern)
+
+
 def locator_texts(locators: Locators | None) -> Iterator[tuple[str, str]]:
     """Every human-supplied string a locator matches on."""
     if locators is None:
@@ -176,10 +188,17 @@ def check_reusable(
         scan(f"step {step.step_id} checkpoint", condition_texts(step.post_condition))
 
         for extraction in step.extractions or []:
-            scan(
-                f"step {step.step_id} extraction {extraction.output_key!r}",
-                locator_texts(extraction.locators),
-            )
+            where = f"step {step.step_id} extraction {extraction.output_key!r}"
+            scan(where, locator_texts(extraction.locators))
+            if extraction.pattern:
+                # A pattern may describe the shape of a value and never the
+                # value: `\$[\d,.]+` matches any price, while `\$29\.99` is
+                # the same circular bug wearing a regex. Compared unescaped,
+                # so the backslashes do not hide the literal.
+                scan(
+                    where,
+                    iter([("pattern", unescape_regex(extraction.pattern))]),
+                )
 
     for outcome in artifact.business_outcomes:
         scan(f"business outcome {outcome.outcome_code}", condition_texts(outcome.detect))

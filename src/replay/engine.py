@@ -18,6 +18,7 @@ See PLAN.md §6.
 from __future__ import annotations
 
 import logging
+import re
 import time
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -33,6 +34,7 @@ from src.artifact.schema import (
     BusinessOutcome,
     ErrorTypeKey,
     ExpectedType,
+    Extraction,
     Interstitial,
     ReplayMode,
     ResultType,
@@ -397,7 +399,7 @@ class ReplayEngine:
             raw = await loc.read_value(
                 session, resolved, extraction.extract_method.value
             )
-            value = raw.strip()
+            value = apply_pattern(raw, extraction, step.step_id)
 
             # A framework populates field values after the route has already
             # changed, so an empty read moments after navigation usually means
@@ -410,7 +412,7 @@ class ReplayEngine:
                     raw = await loc.read_value(
                         session, resolved, extraction.extract_method.value
                     )
-                    value = raw.strip()
+                    value = apply_pattern(raw, extraction, step.step_id)
 
             if not value and extraction.required:
                 raise ReplayFailure(
@@ -702,6 +704,35 @@ class ReplayEngine:
 # --------------------------------------------------------------------------
 # Type coercion
 # --------------------------------------------------------------------------
+
+
+def apply_pattern(raw: str, extraction: Extraction, step_id: int) -> str:
+    """Isolate the value inside an element's text.
+
+    Without a pattern this is just a trim. With one, it is how a value gets
+    extracted from an element that holds several -- a product node carrying
+    name, description and price together, say. Deterministic either way: a
+    regex needs no model, so strict replay stays free of model calls.
+    """
+    text = (raw or "").strip()
+    if not extraction.pattern or not text:
+        return text
+
+    match = re.search(extraction.pattern, text, re.DOTALL)
+    if match is None:
+        if not extraction.required:
+            return ""
+        raise ReplayFailure(
+            step_id=step_id,
+            error_type=ErrorTypeKey.EXTRACTION_EMPTY,
+            message=(
+                f"the pattern for {extraction.output_key!r} matched nothing in "
+                f"the element's text"
+            ),
+            expected=f"text matching {extraction.pattern!r}",
+            observed=f"{text[:160]!r}",
+        )
+    return (match.group(1) if match.re.groups else match.group(0)).strip()
 
 
 def coerce(

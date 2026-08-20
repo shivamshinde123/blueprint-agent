@@ -73,6 +73,17 @@ class ProposedExtraction(Base):
     output_key: str = Field(description="snake_case key for the returned value")
     locator: ProposedLocator
     extract_method: str = Field(description="get_value, text_content, or inner_text")
+    pattern: str | None = Field(
+        default=None,
+        description=(
+            "Optional regex isolating the value inside the element's text, for "
+            "when one element holds several values. Describe the SHAPE of the "
+            r"value, never the value itself: '\$[\d,.]+' matches any price; "
+            r"'\$29\.99' matches only this run's answer and is rejected. "
+            "At most one capture group -- the group is taken if present, "
+            "otherwise the whole match."
+        ),
+    )
     expected_type: str = Field(description="string, integer, currency, or boolean")
 
 

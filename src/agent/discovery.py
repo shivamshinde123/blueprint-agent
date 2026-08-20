@@ -356,6 +356,34 @@ def _locator_echoes_value(
     )
 
 
+def _apply_pattern(raw: str, pattern: str | None, output_key: str) -> str:
+    """Isolate the value the pattern describes, or explain why it did not.
+
+    Mirrors the replay engine, so a pattern that works while recording works
+    identically on every replay -- there is no point recording one that only
+    the recorder can satisfy.
+    """
+    import re as _re
+
+    text = (raw or "").strip()
+    if not pattern or not text:
+        return text
+    try:
+        match = _re.search(pattern, text, _re.DOTALL)
+    except _re.error as exc:
+        raise DiscoveryError(
+            f"the pattern for {output_key!r} is not a valid regular "
+            f"expression: {exc}"
+        ) from exc
+    if match is None:
+        raise DiscoveryError(
+            f"the pattern for {output_key!r} matched nothing in the element's "
+            f"text ({text[:120]!r}). The pattern must describe the shape of "
+            f"the value as this page renders it."
+        )
+    return (match.group(1) if match.re.groups else match.group(0)).strip()
+
+
 def _param_values(params: dict[str, Any]) -> set[str]:
     """Runtime values that must never end up inside a checkpoint."""
     return {str(v) for v in params.values() if v is not None and str(v).strip()}
@@ -1068,7 +1096,8 @@ class DiscoveryAgent:
                 )
 
             method = _extract_method(proposed.extract_method)
-            value = await loc.read_value(session, resolved, method.value)
+            raw = await loc.read_value(session, resolved, method.value)
+            value = _apply_pattern(raw, proposed.pattern, proposed.output_key)
             if not value.strip():
                 raise DiscoveryError(
                     f"output {proposed.output_key!r} resolved to an empty value; "
@@ -1104,6 +1133,7 @@ class DiscoveryAgent:
                     extract_method=method,
                     expected_type=expected,
                     required=True,
+                    pattern=proposed.pattern,
                 )
             )
             staged_schema[proposed.output_key] = expected

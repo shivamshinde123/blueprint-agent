@@ -477,6 +477,20 @@ class Extraction(Base):
     extract_method: ExtractMethod
     expected_type: ExpectedType
     required: bool = True
+    #: Regex isolating the value inside the element's text.
+    #:
+    #: The extraction model otherwise assumes one element holds one value, and
+    #: real pages routinely break that. SauceDemo renders a product's name,
+    #: description and price as a *single* unnamed text node -- no label, no
+    #: role, nothing to address the price on its own. Without a pattern the
+    #: only locator that finds the price is one that already contains it,
+    #: which is circular and banned.
+    #:
+    #: The pattern must describe the *shape* of the value, never the value:
+    #: ``\$[\d,.]+`` matches any price, ``\$29\.99`` matches one run's answer
+    #: and is rejected by the reusability check. With one capture group, the
+    #: group is taken; otherwise the whole match.
+    pattern: str | None = None
 
     @field_validator("output_key")
     @classmethod
@@ -485,6 +499,23 @@ class Extraction(Base):
             raise ValueError(
                 f"output_key must be snake_case (no spaces, hyphens, or "
                 f"uppercase): {v!r}"
+            )
+        return v
+
+    @field_validator("pattern")
+    @classmethod
+    def check_pattern_compiles(cls, v: str | None) -> str | None:
+        """A pattern that does not compile fails every replay, silently late."""
+        if v is None:
+            return v
+        try:
+            compiled = re.compile(v, re.DOTALL)
+        except re.error as exc:
+            raise ValueError(f"pattern is not a valid regular expression: {exc}") from exc
+        if compiled.groups > 1:
+            raise ValueError(
+                f"pattern has {compiled.groups} capture groups; use at most one "
+                f"so it is unambiguous which part is the value"
             )
         return v
 

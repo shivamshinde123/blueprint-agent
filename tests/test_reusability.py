@@ -374,3 +374,107 @@ async def test_a_baked_in_artifact_is_caught_by_replay_too():
 
     # And the static rule catches it without running anything at all.
     assert check_reusable(artifact, {"price": "$29.99"})
+
+
+# --------------------------------------------------------------------------
+# Patterns: for pages that hold several values in one element
+# --------------------------------------------------------------------------
+
+
+def test_pattern_describing_a_shape_is_allowed(artifact_dict):
+    r"""`\$[\d,.]+` matches any price and keeps working next month."""
+    extraction = artifact_dict["steps"][7]["extractions"][0]
+    extraction["pattern"] = r"\$[\d,.]+"
+    assert check_reusable(_artifact(artifact_dict), {"price": "$29.99"}) == []
+
+
+def test_pattern_containing_the_value_is_a_violation(artifact_dict):
+    """The circular bug wearing a regex."""
+    extraction = artifact_dict["steps"][7]["extractions"][0]
+    extraction["pattern"] = r"\$29\.99"
+    violations = check_reusable(_artifact(artifact_dict), {"price": "$29.99"})
+    assert violations
+    assert "pattern" in violations[0].where
+
+
+def test_uncompilable_pattern_is_rejected_at_load(artifact_dict):
+    from pydantic import ValidationError
+
+    artifact_dict["steps"][7]["extractions"][0]["pattern"] = r"([unclosed"
+    with pytest.raises(ValidationError, match="not a valid regular expression"):
+        _artifact(artifact_dict)
+
+
+def test_multiple_capture_groups_are_rejected(artifact_dict):
+    from pydantic import ValidationError
+
+    artifact_dict["steps"][7]["extractions"][0]["pattern"] = r"(\w+)\s+(\w+)"
+    with pytest.raises(ValidationError, match="capture groups"):
+        _artifact(artifact_dict)
+
+
+def test_apply_pattern_takes_the_capture_group():
+    from src.artifact.schema import Extraction
+    from src.replay.engine import apply_pattern
+
+    extraction = Extraction.model_validate(
+        {
+            "output_key": "description",
+            "extract_method": "inner_text",
+            "expected_type": "string",
+            "pattern": r"^\S+ \S+ \S+ (.*?) \$",
+            "locators": {
+                "primary": {
+                    "available": True,
+                    "methods": [{"method": "get_by_text", "value": "x"}],
+                }
+            },
+        }
+    )
+    merged = "Sauce Labs Backpack carry.allTheThings() with style $29.99"
+    assert apply_pattern(merged, extraction, 1) == "carry.allTheThings() with style"
+
+
+def test_apply_pattern_takes_the_whole_match_without_a_group():
+    from src.artifact.schema import Extraction
+    from src.replay.engine import apply_pattern
+
+    extraction = Extraction.model_validate(
+        {
+            "output_key": "price",
+            "extract_method": "inner_text",
+            "expected_type": "currency",
+            "pattern": r"\$[\d,.]+",
+            "locators": {
+                "primary": {
+                    "available": True,
+                    "methods": [{"method": "get_by_text", "value": "x"}],
+                }
+            },
+        }
+    )
+    merged = "Sauce Labs Backpack carry.allTheThings() with style $29.99"
+    assert apply_pattern(merged, extraction, 1) == "$29.99"
+
+
+def test_pattern_that_matches_nothing_fails_loudly():
+    from src.artifact.schema import Extraction
+    from src.replay.engine import ReplayFailure, apply_pattern
+
+    extraction = Extraction.model_validate(
+        {
+            "output_key": "price",
+            "extract_method": "inner_text",
+            "expected_type": "string",
+            "pattern": r"\$[\d,.]+",
+            "required": True,
+            "locators": {
+                "primary": {
+                    "available": True,
+                    "methods": [{"method": "get_by_text", "value": "x"}],
+                }
+            },
+        }
+    )
+    with pytest.raises(ReplayFailure, match="matched nothing"):
+        apply_pattern("no price on this page", extraction, 4)
