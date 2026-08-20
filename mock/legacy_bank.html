@@ -1,0 +1,147 @@
+<!doctype html>
+<!--
+  Deliberately hostile to the accessibility tree.
+
+  This page exists to force the Layer 2 screenshot fallback to do real work.
+  Guru99 Bank is the intended legacy target, but it is a public demo with
+  emailed credentials that expire and periodic downtime - depending on it for a
+  graded deliverable is a single point of failure. This is the reproducible
+  stand-in: it runs locally, needs no credentials, and is guaranteed to expose
+  no useful accessible names. See PLAN.md C11.
+
+  Everything below is intentional, not sloppiness:
+    - table-based layout with no semantic sectioning
+    - inputs with no <label>, no aria-label, no placeholder, no id
+    - buttons rendered as <img> and bare <td onclick>, so they expose no role
+    - class names that carry no meaning
+  The result: get_by_role, get_by_label, get_by_placeholder, and get_by_text
+  all return nothing usable, and the agent has to look at the screen.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<title>Demo Bank</title>
+<style>
+  body { font-family: Verdana, Arial, sans-serif; font-size: 12px; margin: 0; background: #fff; }
+  table { border-collapse: collapse; }
+  .c1 { background: #0a3d62; color: #fff; padding: 10px 14px; font-size: 16px; font-weight: bold; }
+  .c2 { background: #dfe6e9; padding: 6px 10px; font-weight: bold; width: 150px; }
+  .c3 { padding: 6px 10px; }
+  .c4 { background: #0a3d62; color: #fff; padding: 6px 18px; cursor: pointer; text-align: center; }
+  .c5 { border: 1px solid #b2bec3; padding: 3px; width: 190px; }
+  .c6 { background: #b2bec3; padding: 6px 10px; font-weight: bold; }
+  .c7 { padding: 6px 10px; border-bottom: 1px solid #dfe6e9; }
+  .c8 { color: #c0392b; font-weight: bold; padding: 8px 10px; }
+  .nav td { padding: 8px 14px; cursor: pointer; color: #0a3d62; }
+  .wrap { padding: 20px; }
+</style>
+</head>
+<body>
+
+<table width="100%"><tr><td class="c1">DEMO BANK &nbsp;|&nbsp; Manager Console</td></tr></table>
+
+<table class="nav" width="100%" style="background:#ecf0f1">
+  <tr>
+    <td onclick="show('p1')">Home</td>
+    <td onclick="show('p2')">Balance Enquiry</td>
+    <td onclick="show('p3')">Mini Statement</td>
+  </tr>
+</table>
+
+<div class="wrap">
+
+<!-- ---------- login ---------- -->
+<div id="p0">
+  <table>
+    <tr><td class="c2">User ID :</td><td class="c3"><input type="text" class="c5" name="uid"></td></tr>
+    <tr><td class="c2">Password :</td><td class="c3"><input type="password" class="c5" name="pwd"></td></tr>
+    <tr><td></td><td class="c3"><table><tr><td class="c4" onclick="doLogin()">LOGIN</td></tr></table></td></tr>
+  </table>
+  <div id="loginmsg" class="c8"></div>
+</div>
+
+<!-- ---------- home ---------- -->
+<div id="p1" style="display:none">
+  <table width="420">
+    <tr><td class="c6" colspan="2">Welcome</td></tr>
+    <tr><td class="c7">Signed in as</td><td class="c7"><span id="who"></span></td></tr>
+    <tr><td class="c7">Branch</td><td class="c7">Central</td></tr>
+  </table>
+</div>
+
+<!-- ---------- balance enquiry ---------- -->
+<div id="p2" style="display:none">
+  <table>
+    <tr><td class="c6" colspan="2">Balance Enquiry</td></tr>
+    <tr><td class="c2">Account No :</td><td class="c3"><input type="text" class="c5" name="acct"></td></tr>
+    <tr><td></td><td class="c3"><table><tr><td class="c4" onclick="doLookup()">SUBMIT</td></tr></table></td></tr>
+  </table>
+  <div id="result" style="display:none">
+    <br>
+    <table width="420">
+      <tr><td class="c6" colspan="2">Account Details</td></tr>
+      <tr><td class="c7">Account No</td><td class="c7"><span id="r_acct"></span></td></tr>
+      <tr><td class="c7">Account Holder</td><td class="c7"><span id="r_name"></span></td></tr>
+      <tr><td class="c7">Account Type</td><td class="c7"><span id="r_type"></span></td></tr>
+      <tr><td class="c7">Balance</td><td class="c7"><span id="r_bal"></span></td></tr>
+    </table>
+  </div>
+  <div id="err" class="c8"></div>
+</div>
+
+<!-- ---------- mini statement ---------- -->
+<div id="p3" style="display:none">
+  <table width="420">
+    <tr><td class="c6" colspan="2">Mini Statement</td></tr>
+    <tr><td class="c7">No transactions to display.</td><td class="c7"></td></tr>
+  </table>
+</div>
+
+</div>
+
+<script>
+  // Fixed dataset so replay is reproducible.
+  var ACCOUNTS = {
+    "100501": { name: "Peter Anderson", type: "Savings",  bal: "$12,480.55" },
+    "100502": { name: "Maria Gomez",    type: "Current",  bal: "$3,006.00"  },
+    "100503": { name: "Wei Chen",       type: "Savings",  bal: "$47,912.30" }
+  };
+
+  function show(id) {
+    ["p0","p1","p2","p3"].forEach(function (p) {
+      document.getElementById(p).style.display = "none";
+    });
+    document.getElementById(id).style.display = "block";
+  }
+
+  function doLogin() {
+    var u = document.getElementsByName("uid")[0].value;
+    var p = document.getElementsByName("pwd")[0].value;
+    if (!u || !p) {
+      // A real error state, so the business-outcome path has something to detect.
+      document.getElementById("loginmsg").innerText = "Invalid credentials";
+      return;
+    }
+    document.getElementById("who").innerText = u;
+    show("p1");
+  }
+
+  function doLookup() {
+    var a = document.getElementsByName("acct")[0].value.trim();
+    var rec = ACCOUNTS[a];
+    if (!rec) {
+      document.getElementById("result").style.display = "none";
+      document.getElementById("err").innerText = "No Records Found";
+      return;
+    }
+    document.getElementById("err").innerText = "";
+    document.getElementById("r_acct").innerText = a;
+    document.getElementById("r_name").innerText = rec.name;
+    document.getElementById("r_type").innerText = rec.type;
+    document.getElementById("r_bal").innerText  = rec.bal;
+    document.getElementById("result").style.display = "block";
+  }
+</script>
+
+</body>
+</html>
