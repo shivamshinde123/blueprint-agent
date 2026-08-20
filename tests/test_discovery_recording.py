@@ -8,7 +8,12 @@ from __future__ import annotations
 
 import pytest
 
-from src.agent.decisions import AgentDecision, DecisionAction, LocatorMethodName, ProposedLocator
+from src.agent.decisions import (
+    AgentDecision,
+    DecisionAction,
+    LocatorMethodName,
+    ProposedLocator,
+)
 from src.agent.discovery import (
     _looks_sensitive,
     _risk,

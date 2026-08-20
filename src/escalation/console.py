@@ -16,6 +16,7 @@ import asyncio
 import html
 import logging
 from pathlib import Path
+from typing import Self
 
 import uvicorn
 from fastapi import FastAPI
@@ -27,6 +28,21 @@ from src.escalation.handoff import active_sessions, get_session_manager
 log = logging.getLogger(__name__)
 
 app = FastAPI(title="Blueprint Agent - operator console", docs_url=None, redoc_url=None)
+
+#: Strong references to in-flight background tasks.
+#:
+#: The event loop keeps only a *weak* reference to a task, so a bare
+#: `asyncio.create_task(...)` whose result nobody holds can be collected
+#: mid-execution. Here that would mean the post-handoff screenshot and duration
+#: silently never get recorded -- an evidence gap with no error anywhere.
+_BACKGROUND: set[asyncio.Task] = set()
+
+
+def _spawn(coro) -> asyncio.Task:  # type: ignore[no-untyped-def]
+    task = asyncio.create_task(coro)
+    _BACKGROUND.add(task)
+    task.add_done_callback(_BACKGROUND.discard)
+    return task
 
 
 @app.get("/operator", response_class=HTMLResponse)
@@ -63,8 +79,9 @@ async def resume(session_id: str) -> JSONResponse:
 
     manager.resume_from_human()
     # Recording what changed needs the browser, which this request cannot
-    # await without holding the response open. Hand it to the loop.
-    asyncio.create_task(manager.complete_handoff())
+    # await without holding the response open. Hand it to the loop -- with a
+    # strong reference, so it is not collected before it finishes.
+    _spawn(manager.complete_handoff())
     return JSONResponse({"status": "resumed", "session_id": session_id})
 
 
@@ -226,7 +243,7 @@ class ConsoleServer:
         self._server: uvicorn.Server | None = None
         self._task: asyncio.Task | None = None
 
-    async def __aenter__(self) -> ConsoleServer:
+    async def __aenter__(self) -> Self:
         config = uvicorn.Config(
             app, host=self.host, port=self.port, log_level="warning"
         )
@@ -246,7 +263,7 @@ class ConsoleServer:
         if self._task is not None:
             try:
                 await asyncio.wait_for(self._task, timeout=5)
-            except (TimeoutError, asyncio.TimeoutError):  # pragma: no cover
+            except TimeoutError:  # pragma: no cover
                 self._task.cancel()
 
 

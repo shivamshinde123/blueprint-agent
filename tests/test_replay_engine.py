@@ -10,14 +10,11 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import pytest
-
-from src.artifact.schema import Artifact, ReplayMode, ResultType
+from src.artifact.schema import Artifact, BrowserConfig, ReplayMode, ResultType
 from src.evidence.logger import RunLog
 from src.replay.engine import ReplayEngine
 from src.safety.guardrails import Allowlist
 from src.session.browser import browser_session
-from src.artifact.schema import BrowserConfig
 from tests import fake_app
 from tests.test_browser import needs_chromium
 

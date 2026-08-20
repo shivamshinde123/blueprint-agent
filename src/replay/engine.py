@@ -19,17 +19,18 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
+from datetime import UTC
 from decimal import Decimal, InvalidOperation
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from src import settings
 from src.artifact.schema import (
     ActionType,
     Artifact,
     BusinessOutcome,
-    Condition,
     ErrorTypeKey,
     ExpectedType,
     Interstitial,
@@ -326,8 +327,6 @@ class ReplayEngine:
         params: dict[str, Any],
         outputs: dict[str, Any],
     ) -> loc.Resolved | None:
-        config = self.artifact.replay_config
-
         if step.action is ActionType.NAVIGATE:
             await session.page.goto(step.url or "", wait_until="domcontentloaded")
             return None
@@ -762,9 +761,9 @@ def _parse_currency(value: str, step_id: int, key: str) -> str:
 
 
 def _now() -> str:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    return datetime.now(UTC).isoformat(timespec="milliseconds")
 
 
 # --------------------------------------------------------------------------

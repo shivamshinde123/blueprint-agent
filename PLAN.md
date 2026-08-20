@@ -1,6 +1,6 @@
 # PLAN.md — Blueprint_Agent
 
-**Status:** Phases 0–1 complete — schema, safety, browser, evidence, legacy mock. 176 tests passing. Phase 2 (discovery) next.
+**Status:** Framework complete (Phases 0–5). 305 tests passing, lint clean. Awaiting target flows for the first real discovery run.
 **Last updated:** 2026-08-20
 **Source of truth:** [Notion project page](https://app.notion.com/p/3bd3166155398177b587cb3d9ab26701) (10 sub-pages) + the assignment PDF.
 
@@ -891,7 +891,7 @@ is kept for diagnostics only.
 - [x] `mock/legacy_bank.html` + `mock/server.py` on `:8081` (§11 C11), with tests asserting Layer 1 genuinely fails on it
 - [x] **176 tests passing**, no network required
 
-### Phase 2 — Discovery
+### Phase 2 — Discovery ✅ complete
 
 - [ ] `src/agent/decisions.py` — `AgentDecision` model for `messages.parse`
 - [ ] `src/agent/prompts.py` — all prompts; system prompt byte-stable for caching
@@ -902,7 +902,7 @@ is kept for diagnostics only.
 - [ ] **▶ First real discovery run on OrangeHRM → save evidence**
 - [ ] Negative probe pass → `business_outcomes` (§11 C6)
 
-### Phase 3 — Replay
+### Phase 3 — Replay ✅ complete
 
 - [ ] `src/replay/locator.py` — Layer 1 chain, Layer 2 fallback, scroll restore (§11 C1)
 - [ ] `src/replay/engine.py` — pre-flight, per-step sequence, three result types
@@ -911,7 +911,7 @@ is kept for diagnostics only.
 - [ ] Extraction + `currency` normalization (§11 C14)
 - [ ] **▶ First real replay in `strict` mode → save evidence, confirm `layer2_llm_calls: 0`**
 
-### Phase 4 — Escalation
+### Phase 4 — Escalation ✅ complete
 
 - [ ] `src/escalation/handoff.py` — `SessionHandoffManager` (**`event.clear()` first**, §8.3)
 - [ ] Helper functions + module-level session registry
@@ -920,7 +920,7 @@ is kept for diagnostics only.
 - [ ] `StuckDetector` — all three signals
 - [ ] **▶ Demonstrate a real handoff → `evidence/interventions.json`**
 
-### Phase 5 — Generalization & evidence
+### Phase 5 — Generalization ✅ (evidence runs pending flows)
 
 - [ ] `src/artifact/merge.py` + `config/tenants/` override demo (§10.2)
 - [ ] Self-healing sidecar patch writer (§11 C8)

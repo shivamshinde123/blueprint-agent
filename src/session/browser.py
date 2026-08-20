@@ -21,9 +21,10 @@ than a rule someone has to remember at each call site. See PLAN.md §11 C12.
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, AsyncIterator
+from typing import TYPE_CHECKING, Any
 
 from src.artifact.schema import BrowserConfig
 

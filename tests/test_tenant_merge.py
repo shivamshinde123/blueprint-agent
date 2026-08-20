@@ -205,7 +205,7 @@ def test_merged_artifact_is_held_to_full_validation(tmp_path):
     path = tmp_path / "broken.json"
     path.write_text(json.dumps(override), encoding="utf-8")
 
-    with pytest.raises(MergeError, match="not.*valid"):
+    with pytest.raises(MergeError, match=r"not.*valid"):
         merge(GOLDEN_ARTIFACT, path)
 
 

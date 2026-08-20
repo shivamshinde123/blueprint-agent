@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from src.agent.observation import (
     SPARSE_INTERACTIVE_THRESHOLD,
     Observation,

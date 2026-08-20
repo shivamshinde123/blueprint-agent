@@ -15,7 +15,45 @@ dependencies = [
 dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.3",
 ]
+
+[tool.ruff]
+line-length = 92
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "DTZ", "S", "TRY", "ISC", "PYI", "BLE"]
+ignore = [
+    # Best-effort paths deliberately swallow everything: browser teardown,
+    # evidence capture, and the accessibility snapshot must never mask the real
+    # error by raising one of their own. Each site carries a comment.
+    "BLE001",
+    "S110",
+    "S112",
+    # Pydantic converts ValueError into ValidationError; a TypeError would
+    # propagate uncaught and bypass the schema's error reporting entirely.
+    "TRY004",
+    # Long f-strings in raised errors are the point -- they are the message a
+    # user reads when an artifact is rejected.
+    "TRY003",
+    "E501",
+    # `class X(str, Enum)` is the idiom Pydantic and the JSON schema round-trip
+    # is written against. StrEnum changes __str__ semantics, and this is 27
+    # enums across the artifact schema -- not worth the blast radius for a
+    # stylistic gain.
+    "UP042",
+    # `created_at` is a calendar date, not an instant; a timezone would imply a
+    # precision the field does not have.
+    "DTZ011",
+    # En-dashes and arrows in prose docstrings are deliberate.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "RUF059"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

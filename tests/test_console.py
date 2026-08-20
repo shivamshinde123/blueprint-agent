@@ -189,7 +189,6 @@ async def test_console_server_starts_and_stops():
 async def test_replay_wires_escalation_and_records_it(monkeypatch):
     """`--escalate` has to produce a real, resumable pause -- not a flag that
     quietly does nothing."""
-    from src.escalation.handoff import get_session_manager
     from src.replay.engine import replay
     from src.safety.guardrails import Allowlist
 

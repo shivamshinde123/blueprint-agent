@@ -112,7 +112,7 @@ def _walk(node: Any, secrets: set[str], sensitive_names: set[str]) -> Any:
 class Redactor:
     """Bound helper so callers do not re-derive the secret set on every write."""
 
-    __slots__ = ("_secrets", "_names")
+    __slots__ = ("_names", "_secrets")
 
     def __init__(self, artifact: Artifact, params: dict[str, Any]) -> None:
         self._secrets = sensitive_values(artifact, params)

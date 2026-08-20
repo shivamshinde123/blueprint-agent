@@ -198,8 +198,8 @@ async def resolve_by_vision(
     model is asked to look at the *current* screen rather than trusting them,
     because a layout shift is exactly the situation this path exists for.
     """
-    from src.agent.prompts import VISION_LOCATE_SYSTEM, vision_locate_user_message
     from src.agent.decisions import VisionLocate
+    from src.agent.prompts import VISION_LOCATE_SYSTEM, vision_locate_user_message
 
     # Restore the scroll offset the coordinates were captured at, so a stored
     # point and a fresh screenshot describe the same frame (PLAN.md C1).

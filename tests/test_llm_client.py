@@ -126,8 +126,8 @@ def test_deeply_nested_cycle_is_rejected():
 
 
 def test_missing_api_key_raises_a_useful_error(monkeypatch):
-    from src.llm.client import LLMClient
     from src import settings
+    from src.llm.client import LLMClient
 
     monkeypatch.delenv(settings.API_KEY_ENV, raising=False)
     with pytest.raises(LLMError) as exc:

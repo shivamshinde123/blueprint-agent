@@ -20,7 +20,7 @@ from src.safety.guardrails import (
     preflight,
     requires_approval,
 )
-from src.safety.redaction import REDACTED, Redactor, redact_params, redact_text
+from src.safety.redaction import REDACTED, Redactor, redact_params
 
 PARAMS = {
     "auth_username": "Admin",

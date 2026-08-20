@@ -24,9 +24,10 @@ import hashlib
 import json
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import date
-from typing import Any, Awaitable, Callable
+from datetime import UTC, date
+from typing import Any
 
 from src import settings
 from src.agent import prompts
@@ -211,8 +212,10 @@ def synthesise_post_condition(
                 timeout_ms=timeout_ms,
                 on_fail=OnFail.RETRY,
             ),
-            "no observable page change; checkpoint is weak and should be "
-            "reviewed by hand",
+            (
+                "no observable page change; checkpoint is weak and should be "
+                "reviewed by hand"
+            ),
         )
 
     return (
@@ -845,9 +848,9 @@ class DiscoveryAgent:
 
 
 def _now() -> str:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    return datetime.now(UTC).isoformat(timespec="milliseconds")
 
 
 def _risk(decision: AgentDecision) -> RiskLevel:

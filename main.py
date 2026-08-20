@@ -27,7 +27,6 @@ from src.artifact.validator import ArtifactError, load_artifact
 from src.safety.guardrails import Allowlist, SafetyViolation
 from src.settings import MODEL_SLUG, ensure_dirs
 
-
 # --------------------------------------------------------------------------
 # discover
 # --------------------------------------------------------------------------

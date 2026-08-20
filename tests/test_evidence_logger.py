@@ -16,7 +16,6 @@ from src.evidence.logger import (
     InterventionLog,
     LLMCallLog,
     RunLog,
-    StepLog,
     append_intervention,
     new_run_id,
     step_log_for,
