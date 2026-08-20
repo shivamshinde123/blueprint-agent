@@ -40,40 +40,57 @@ class LocatorMethodName(str, Enum):
     GET_BY_TEXT = "get_by_text"
 
 
+#: Sentinel for "not supplied", used instead of ``None`` throughout the
+#: decision models.
+#:
+#: Every ``str | None`` field becomes a union in the emitted JSON schema, and
+#: Anthropic caps a strict schema at 16 union-typed parameters -- "exponential
+#: compilation cost". These models nest a locator inside a decision *and*
+#: inside each extraction, so optional fields multiply fast: adding one more
+#: pushed the count to 17 and every discovery call started failing with a 400.
+#:
+#: Empty string means absent. It costs one normalisation step at the boundary
+#: and keeps the schema flat.
+UNSET = ""
+#: Same idea for the one optional integer.
+UNSET_INDEX = -1
+
+
 class ProposedLocator(Base):
     """How the model believes the target element can be found.
 
     Kept flat rather than nested per method: strict JSON schema mode handles
-    flat optional fields far more reliably than deep unions, and the recorder
-    converts this into the artifact's richer locator shape.
+    flat fields far more reliably than deep unions, and the recorder converts
+    this into the artifact's richer locator shape.
     """
 
     method: LocatorMethodName
     #: Required for get_by_role, e.g. "button", "textbox", "link".
-    role: str | None = Field(default=None, description="ARIA role, for get_by_role")
+    role: str = Field(default=UNSET, description="ARIA role, for get_by_role")
     #: Accessible name. May contain {{param}} for labels that vary per run.
-    name: str | None = Field(default=None, description="Accessible name or label")
+    name: str = Field(default=UNSET, description="Accessible name or label")
     #: Literal text, for get_by_text and get_by_placeholder.
-    value: str | None = Field(default=None, description="Text or placeholder value")
+    value: str = Field(default=UNSET, description="Text or placeholder value")
     #: Address the element by the shape of its text, with get_by_text.
-    pattern: str | None = Field(
-        default=None,
+    pattern: str = Field(
+        default=UNSET,
         description=(
             "With get_by_text: a regex matching the element's text by SHAPE. "
             "Use when a value has no label, no role, and the only text "
             r"identifying it is the value itself -- '\$[\d,.]+' finds a price "
             "on any product page. Never write the value: that only ever finds "
-            "this run's answer."
+            "this run's answer. Empty string if not used."
         ),
     )
     #: Which match to take, when position is more stable than the name.
-    nth: int | None = Field(
-        default=None,
+    nth: int = Field(
+        default=UNSET_INDEX,
         description=(
-            "0-based index to select by position instead of by name. Use when "
-            "the element's text comes from this run's data -- the first "
-            "suggestion in a typeahead list, the first row of a results table "
-            "-- so the locator stays correct for a different input."
+            "0-based index to select by position instead of by name, or -1 for "
+            "none. Use when the element's text comes from this run's data -- "
+            "the first suggestion in a typeahead list, the first row of a "
+            "results table -- so the locator stays correct for a different "
+            "input."
         ),
     )
 
@@ -84,15 +101,15 @@ class ProposedExtraction(Base):
     output_key: str = Field(description="snake_case key for the returned value")
     locator: ProposedLocator
     extract_method: str = Field(description="get_value, text_content, or inner_text")
-    pattern: str | None = Field(
-        default=None,
+    pattern: str = Field(
+        default=UNSET,
         description=(
-            "Optional regex isolating the value inside the element's text, for "
-            "when one element holds several values. Describe the SHAPE of the "
-            r"value, never the value itself: '\$[\d,.]+' matches any price; "
+            "Regex isolating the value inside the element's text, for when one "
+            "element holds several values. Describe the SHAPE of the value, "
+            r"never the value itself: '\$[\d,.]+' matches any price; "
             r"'\$29\.99' matches only this run's answer and is rejected. "
             "At most one capture group -- the group is taken if present, "
-            "otherwise the whole match."
+            "otherwise the whole match. Empty string if not needed."
         ),
     )
     expected_type: str = Field(description="string, integer, currency, or boolean")
@@ -107,22 +124,23 @@ class AgentDecision(Base):
     action: DecisionAction
 
     #: Populated for click / fill / extract. Null for navigate and give_up.
+    #: The one union the schema keeps -- an object has no natural empty value.
     locator: ProposedLocator | None = None
 
     #: For fill. Use {{param_name}} when the value comes from an input
-    #: parameter -- never the literal value.
-    value: str | None = None
+    #: parameter -- never the literal value. Empty string when not filling.
+    value: str = UNSET
 
-    #: For navigate.
-    url: str | None = None
+    #: For navigate. Empty string when not navigating.
+    url: str = UNSET
 
-    #: For extract. One entry per field the goal asks for.
-    extractions: list[ProposedExtraction] | None = None
+    #: For extract. One entry per field the goal asks for; empty otherwise.
+    extractions: list[ProposedExtraction] = Field(default_factory=list)
 
     #: Human-readable description of the element, stored as the Layer 2
     #: fallback hint so it can be re-located visually later.
-    visual_description: str | None = Field(
-        default=None,
+    visual_description: str = Field(
+        default=UNSET,
         description="What the element looks like and where it sits on screen",
     )
 
@@ -139,7 +157,7 @@ class AgentDecision(Base):
     stuck: bool = False
 
     #: Why it is stuck, shown to the human operator.
-    stuck_reason: str | None = None
+    stuck_reason: str = UNSET
 
 
 class VisionLocate(Base):

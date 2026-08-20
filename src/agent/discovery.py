@@ -134,14 +134,24 @@ class _Recorder:
 # --------------------------------------------------------------------------
 
 
+def _unset(text: str | None) -> str | None:
+    """Turn the decision models' empty-string sentinel back into ``None``.
+
+    The decision schema avoids nullable fields to stay under the API's cap on
+    union-typed parameters; the artifact schema uses real optionals. This is
+    the one place the two conventions meet.
+    """
+    return text or None
+
+
 def to_artifact_locator(proposed: ProposedLocator) -> AccessibilityLocatorMethod:
     """Convert the model's flat proposal into the artifact's typed form."""
     method = AccessibilityMethod(proposed.method.value)
 
     # get_by_role needs both role and name to be stable; the schema enforces
     # that, so fill in a defensible default rather than failing the turn.
-    name = proposed.name
-    value = proposed.value
+    name = _unset(proposed.name)
+    value = _unset(proposed.value)
     if method is AccessibilityMethod.GET_BY_ROLE and not name:
         name = value
     if method is AccessibilityMethod.GET_BY_TEXT and not value:
@@ -149,11 +159,11 @@ def to_artifact_locator(proposed: ProposedLocator) -> AccessibilityLocatorMethod
 
     return AccessibilityLocatorMethod(
         method=method,
-        role=proposed.role,
+        role=_unset(proposed.role),
         name=name,
         value=value,
-        nth=proposed.nth,
-        pattern=proposed.pattern,
+        nth=proposed.nth if proposed.nth >= 0 else None,
+        pattern=_unset(proposed.pattern),
     )
 
 
@@ -171,7 +181,7 @@ def candidate_methods(proposed: ProposedLocator) -> list[AccessibilityLocatorMet
     resilience the schema was designed to carry.
     """
     primary = to_artifact_locator(proposed)
-    label = proposed.name or proposed.value
+    label = _unset(proposed.name) or _unset(proposed.value)
     methods = [primary]
 
     # A shape-addressed locator identifies itself; there is no name to build
@@ -184,7 +194,7 @@ def candidate_methods(proposed: ProposedLocator) -> list[AccessibilityLocatorMet
             method=AccessibilityMethod.GET_BY_ROLE,
             role=proposed.role or "textbox",
             name=label,
-            nth=proposed.nth,
+            nth=proposed.nth if proposed.nth >= 0 else None,
         ),
         AccessibilityLocatorMethod(
             method=AccessibilityMethod.GET_BY_LABEL, name=label
@@ -1136,7 +1146,7 @@ class DiscoveryAgent:
                 timeout,
                 action=ActionType.EXTRACT,
                 extract_method=proposed.extract_method,
-                pattern=proposed.pattern,
+                pattern=_unset(proposed.pattern),
             )
             if not working:
                 raise DiscoveryError(
@@ -1155,7 +1165,7 @@ class DiscoveryAgent:
 
             method = _extract_method(proposed.extract_method)
             raw = await loc.read_value(session, resolved, method.value)
-            value = _apply_pattern(raw, proposed.pattern, proposed.output_key)
+            value = _apply_pattern(raw, _unset(proposed.pattern), proposed.output_key)
             if not value.strip():
                 raise DiscoveryError(
                     f"output {proposed.output_key!r} resolved to an empty value; "
@@ -1191,7 +1201,7 @@ class DiscoveryAgent:
                     extract_method=method,
                     expected_type=expected,
                     required=True,
-                    pattern=proposed.pattern,
+                    pattern=_unset(proposed.pattern),
                 )
             )
             staged_schema[proposed.output_key] = expected

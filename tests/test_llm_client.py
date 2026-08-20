@@ -186,3 +186,67 @@ def _flatten_keys(node) -> set[str]:
         for item in node:
             keys |= _flatten_keys(item)
     return keys
+
+
+# --------------------------------------------------------------------------
+# Schema complexity has a hard ceiling
+# --------------------------------------------------------------------------
+
+#: Anthropic rejects a strict schema carrying more than this many union-typed
+#: parameters -- "exponential compilation cost". Every `str | None` field is a
+#: union, and the decision models nest a locator inside the decision *and*
+#: inside each extraction, so optionals multiply. Adding one more field once
+#: took the count to 17 and every discovery call began failing with a 400.
+MAX_UNION_PARAMETERS = 16
+
+
+def _count_unions(node, path="") -> list[str]:
+    found: list[str] = []
+    if isinstance(node, dict):
+        if "anyOf" in node or isinstance(node.get("type"), list):
+            found.append(path)
+        for key, value in node.items():
+            found += _count_unions(value, f"{path}.{key}")
+    elif isinstance(node, list):
+        for i, value in enumerate(node):
+            found += _count_unions(value, f"{path}[{i}]")
+    return found
+
+
+def test_decision_schema_stays_under_the_union_limit():
+    """Guards a limit that is invisible until every call fails at once."""
+    from src.agent.decisions import AgentDecision
+
+    unions = _count_unions(_json_schema_for(AgentDecision))
+    assert len(unions) <= MAX_UNION_PARAMETERS, (
+        f"the decision schema has {len(unions)} union-typed parameters, over "
+        f"the limit of {MAX_UNION_PARAMETERS}: {unions}. Use a sentinel "
+        f"default (empty string, -1) instead of a nullable field."
+    )
+
+
+def test_every_decision_model_stays_under_the_limit():
+    from src.agent.decisions import OutcomeProbe, VisionLocate
+
+    for model in (VisionLocate, OutcomeProbe):
+        unions = _count_unions(_json_schema_for(model))
+        assert len(unions) <= MAX_UNION_PARAMETERS, model.__name__
+
+
+def test_sentinels_normalise_back_to_none():
+    """The decision models avoid nullables; the artifact schema uses them."""
+    from src.agent.decisions import UNSET, UNSET_INDEX, LocatorMethodName, ProposedLocator
+    from src.agent.discovery import to_artifact_locator
+
+    proposed = ProposedLocator(
+        method=LocatorMethodName.GET_BY_TEXT,
+        value="Search",
+        role=UNSET,
+        pattern=UNSET,
+        nth=UNSET_INDEX,
+    )
+    converted = to_artifact_locator(proposed)
+    assert converted.role is None
+    assert converted.pattern is None
+    assert converted.nth is None
+    assert converted.value == "Search"
