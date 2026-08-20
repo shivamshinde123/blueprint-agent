@@ -1,0 +1,46 @@
+# ---- Secrets: never commit ----
+.env
+.env.local
+*.pem
+*.key
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ---- Environments ----
+.venv/
+venv/
+env/
+
+# ---- Tooling caches ----
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ---- Playwright ----
+# Traces/videos/HAR are disabled in code (PLAN.md C12), but belt-and-braces:
+playwright-report/
+test-results/
+*.har
+*.webm
+*.zip
+
+# ---- Evidence ----
+# Screenshots can capture on-screen PII; logs are committed, images are not.
+evidence/screenshots/
+# Self-healing sidecar patches are run artifacts, not source (PLAN.md C8)
+artifacts/heal/
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

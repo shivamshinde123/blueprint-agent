@@ -1,0 +1,467 @@
+{
+  "capability_id": "lookup_employee_profile",
+  "version": "1.0.0",
+  "schema_version": "1.0.0",
+  "description": "Look up an employee in OrangeHRM PIM and return their job title and sub unit.",
+  "recorded_by": "agent",
+  "created_at": "2026-08-20",
+  "surface_type": "modern_web",
+  "target": {
+    "app_name": "OrangeHRM",
+    "url": "https://opensource-demo.orangehrmlive.com",
+    "surface_type": "modern_web"
+  },
+
+  "input_parameters": {
+    "auth_username": { "type": "string", "required": true, "sensitive": true, "description": "OrangeHRM login" },
+    "auth_password": { "type": "string", "required": true, "sensitive": true, "description": "OrangeHRM password" },
+    "employee_name": { "type": "string", "required": true, "sensitive": false, "description": "Full or partial employee name" }
+  },
+
+  "output_schema": {
+    "job_title": "string",
+    "sub_unit": "string"
+  },
+
+  "replay_config": {
+    "browser": {
+      "viewport": { "width": 1280, "height": 720 },
+      "device_scale_factor": 1,
+      "is_mobile": false,
+      "headless": false,
+      "locale": "en-US",
+      "timezone_id": "UTC",
+      "reduced_motion": "reduce",
+      "enforce_strictly": true
+    },
+    "mode": "strict",
+    "default_timeout_ms": 8000,
+    "interstitial_probe_timeout_ms": 250,
+    "max_retries_per_step": 3,
+    "retry_wait_ms": 1000,
+    "max_llm_calls_per_replay": 3
+  },
+
+  "session_recovery": {
+    "detect_conditions": [
+      { "condition": "url_contains", "value": "/auth/login", "on_fail": "retry" }
+    ],
+    "recovery_steps": [
+      {
+        "action": "fill",
+        "value": "{{auth_username}}",
+        "locators": {
+          "primary": { "strategy": "accessibility_tree", "available": true,
+            "methods": [{ "method": "get_by_placeholder", "value": "Username" }] }
+        }
+      },
+      {
+        "action": "fill",
+        "value": "{{auth_password}}",
+        "locators": {
+          "primary": { "strategy": "accessibility_tree", "available": true,
+            "methods": [{ "method": "get_by_placeholder", "value": "Password" }] }
+        }
+      },
+      {
+        "action": "click",
+        "locators": {
+          "primary": { "strategy": "accessibility_tree", "available": true,
+            "methods": [{ "method": "get_by_role", "role": "button", "name": "Login" }] }
+        }
+      }
+    ],
+    "recovery_post_condition": {
+      "condition": "url_not_contains",
+      "value": "/auth/login",
+      "timeout_ms": 8000,
+      "on_fail": "on_recovery_fail"
+    },
+    "after_recovery": "restart_from_current_step",
+    "max_recovery_attempts": 1,
+    "on_recovery_fail": "escalate_human"
+  },
+
+  "known_interstitials": [
+    {
+      "name": "loading_spinner",
+      "detect": {
+        "condition": "element_visible",
+        "timeout_ms": 250,
+        "on_fail": "retry",
+        "locators": {
+          "primary": { "strategy": "accessibility_tree", "available": true,
+            "methods": [{ "method": "get_by_role", "role": "progressbar", "name": "Loading" }] }
+        }
+      },
+      "dismiss": {
+        "dismiss_action": "wait_for_hidden",
+        "timeout_ms": 8000,
+        "on_timeout": "hard_failure",
+        "locators": {
+          "primary": { "strategy": "accessibility_tree", "available": true,
+            "methods": [{ "method": "get_by_role", "role": "progressbar", "name": "Loading" }] }
+        }
+      }
+    }
+  ],
+
+  "steps": [
+    {
+      "step_id": 1,
+      "action": "navigate",
+      "description": "Open the OrangeHRM login page.",
+      "fragile": false,
+      "risk_level": "safe",
+      "pre_condition": null,
+      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/auth/login",
+      "post_condition": {
+        "condition": "url_contains",
+        "value": "/auth/login",
+        "timeout_ms": 8000,
+        "on_fail": "hard_failure"
+      }
+    },
+    {
+      "step_id": 2,
+      "action": "fill",
+      "description": "Type the username into the login form.",
+      "fragile": false,
+      "risk_level": "low",
+      "value": "{{auth_username}}",
+      "pre_condition": {
+        "condition": "element_visible",
+        "timeout_ms": 8000,
+        "on_fail": "retry",
+        "locators": {
+          "primary": { "strategy": "accessibility_tree", "available": true,
+            "methods": [{ "method": "get_by_placeholder", "value": "Username" }] }
+        }
+      },
+      "locators": {
+        "primary": { "strategy": "accessibility_tree", "available": true,
+          "methods": [{ "method": "get_by_placeholder", "value": "Username" }] },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": { "x": 812, "y": 322 },
+          "scroll_y": 0,
+          "viewport": { "width": 1280, "height": 720 },
+          "visual_description": "Username input, first field in the login card on the right"
+        }
+      },
+      "post_condition": {
+        "condition": "element_has_value",
+        "value": "{{auth_username}}",
+        "timeout_ms": 4000,
+        "on_fail": "retry",
+        "locators": {
+          "primary": { "strategy": "accessibility_tree", "available": true,
+            "methods": [{ "method": "get_by_placeholder", "value": "Username" }] }
+        }
+      }
+    },
+    {
+      "step_id": 3,
+      "action": "fill",
+      "description": "Type the password into the login form.",
+      "fragile": false,
+      "risk_level": "low",
+      "value": "{{auth_password}}",
+      "pre_condition": {
+        "condition": "element_visible",
+        "timeout_ms": 8000,
+        "on_fail": "retry",
+        "locators": {
+          "primary": { "strategy": "accessibility_tree", "available": true,
+            "methods": [{ "method": "get_by_placeholder", "value": "Password" }] }
+        }
+      },
+      "locators": {
+        "primary": { "strategy": "accessibility_tree", "available": true,
+          "methods": [{ "method": "get_by_placeholder", "value": "Password" }] },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": { "x": 812, "y": 385 },
+          "scroll_y": 0,
+          "viewport": { "width": 1280, "height": 720 },
+          "visual_description": "Password input, directly below the username field"
+        }
+      },
+      "post_condition": {
+        "condition": "element_has_value",
+        "value": "{{auth_password}}",
+        "timeout_ms": 4000,
+        "on_fail": "retry",
+        "locators": {
+          "primary": { "strategy": "accessibility_tree", "available": true,
+            "methods": [{ "method": "get_by_placeholder", "value": "Password" }] }
+        }
+      }
+    },
+    {
+      "step_id": 4,
+      "action": "click",
+      "description": "Submit the login form.",
+      "fragile": false,
+      "risk_level": "low",
+      "locators": {
+        "primary": { "strategy": "accessibility_tree", "available": true,
+          "methods": [{ "method": "get_by_role", "role": "button", "name": "Login" }] },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": { "x": 812, "y": 452 },
+          "scroll_y": 0,
+          "viewport": { "width": 1280, "height": 720 },
+          "visual_description": "Orange Login button below the password field"
+        }
+      },
+      "post_condition": {
+        "condition": "url_contains",
+        "value": "/dashboard",
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      }
+    },
+    {
+      "step_id": 5,
+      "action": "click",
+      "description": "Open the PIM (employee management) module from the sidebar.",
+      "fragile": false,
+      "risk_level": "safe",
+      "pre_condition": {
+        "condition": "url_contains",
+        "value": "/dashboard",
+        "timeout_ms": 8000,
+        "on_fail": "hard_failure"
+      },
+      "locators": {
+        "primary": { "strategy": "accessibility_tree", "available": true,
+          "methods": [{ "method": "get_by_role", "role": "link", "name": "PIM" }] },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": { "x": 92, "y": 246 },
+          "scroll_y": 0,
+          "viewport": { "width": 1280, "height": 720 },
+          "visual_description": "PIM entry in the left sidebar navigation"
+        }
+      },
+      "post_condition": {
+        "condition": "url_contains",
+        "value": "/viewEmployeeList",
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      }
+    },
+    {
+      "step_id": 6,
+      "action": "fill",
+      "description": "Type the employee name into the PIM search box.",
+      "fragile": false,
+      "risk_level": "safe",
+      "value": "{{employee_name}}",
+      "pre_condition": {
+        "condition": "element_visible",
+        "timeout_ms": 8000,
+        "on_fail": "retry",
+        "locators": {
+          "primary": { "strategy": "accessibility_tree", "available": true,
+            "methods": [{ "method": "get_by_placeholder", "value": "Type for hints..." }] }
+        }
+      },
+      "locators": {
+        "primary": { "strategy": "accessibility_tree", "available": true,
+          "methods": [{ "method": "get_by_placeholder", "value": "Type for hints..." }] },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": { "x": 344, "y": 268 },
+          "scroll_y": 0,
+          "viewport": { "width": 1280, "height": 720 },
+          "visual_description": "Employee Name input in the PIM search panel"
+        }
+      },
+      "post_condition": {
+        "condition": "element_has_value",
+        "value": "{{employee_name}}",
+        "timeout_ms": 4000,
+        "on_fail": "retry",
+        "locators": {
+          "primary": { "strategy": "accessibility_tree", "available": true,
+            "methods": [{ "method": "get_by_placeholder", "value": "Type for hints..." }] }
+        }
+      }
+    },
+    {
+      "step_id": 7,
+      "action": "click",
+      "description": "Run the employee search.",
+      "fragile": false,
+      "risk_level": "safe",
+      "locators": {
+        "primary": { "strategy": "accessibility_tree", "available": true,
+          "methods": [
+            { "method": "get_by_role", "role": "button", "name": "Search" },
+            { "method": "get_by_text", "value": "Search" }
+          ] },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": { "x": 1128, "y": 452 },
+          "scroll_y": 0,
+          "viewport": { "width": 1280, "height": 720 },
+          "visual_description": "Orange Search button at the bottom right of the search panel"
+        }
+      },
+      "post_condition": {
+        "condition": "page_contains_text",
+        "value": "Records Found",
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      }
+    },
+    {
+      "step_id": 8,
+      "action": "extract",
+      "description": "Read the job title and sub unit from the results row.",
+      "fragile": false,
+      "risk_level": "safe",
+      "pre_condition": {
+        "condition": "page_contains_text",
+        "value": "Records Found",
+        "timeout_ms": 8000,
+        "on_fail": "hard_failure"
+      },
+      "extractions": [
+        {
+          "output_key": "job_title",
+          "extract_method": "inner_text",
+          "expected_type": "string",
+          "required": true,
+          "locators": {
+            "primary": { "strategy": "accessibility_tree", "available": true,
+              "methods": [{ "method": "get_by_role", "role": "cell", "name": "Job Title" }] },
+            "fallback": {
+              "strategy": "screenshot",
+              "region": { "x": 620, "y": 560, "width": 180, "height": 40 },
+              "scroll_y": 0,
+              "viewport": { "width": 1280, "height": 720 },
+              "visual_description": "Job Title column value in the first result row"
+            }
+          }
+        },
+        {
+          "output_key": "sub_unit",
+          "extract_method": "inner_text",
+          "expected_type": "string",
+          "required": true,
+          "locators": {
+            "primary": { "strategy": "accessibility_tree", "available": true,
+              "methods": [{ "method": "get_by_role", "role": "cell", "name": "Sub Unit" }] },
+            "fallback": {
+              "strategy": "screenshot",
+              "region": { "x": 900, "y": 560, "width": 180, "height": 40 },
+              "scroll_y": 0,
+              "viewport": { "width": 1280, "height": 720 },
+              "visual_description": "Sub Unit column value in the first result row"
+            }
+          }
+        }
+      ],
+      "post_condition": {
+        "condition": "all_extractions_non_empty",
+        "timeout_ms": 4000,
+        "on_fail": "hard_failure"
+      }
+    }
+  ],
+
+  "business_outcomes": [
+    {
+      "step_ids": [7, 8],
+      "name": "Employee not found",
+      "detect": {
+        "condition": "page_contains_text",
+        "value": "No Records Found",
+        "timeout_ms": 4000,
+        "on_fail": "retry"
+      },
+      "outcome_code": "EMPLOYEE_NOT_FOUND",
+      "outcome_message": "No employee matched the supplied name.",
+      "is_error": false,
+      "return_value": { "job_title": null, "sub_unit": null }
+    },
+    {
+      "step_ids": [4],
+      "name": "Authentication failed",
+      "detect": {
+        "condition": "page_contains_text",
+        "value": "Invalid credentials",
+        "timeout_ms": 4000,
+        "on_fail": "retry"
+      },
+      "outcome_code": "AUTH_FAILED",
+      "outcome_message": "The supplied credentials were rejected by OrangeHRM.",
+      "is_error": false,
+      "return_value": { "job_title": null, "sub_unit": null }
+    }
+  ],
+
+  "error_map": {
+    "_default": {
+      "element_not_found": {
+        "category": "recoverable",
+        "action": "retry",
+        "max_retries": 3,
+        "retry_wait_ms": 1000,
+        "on_exhausted": "escalate_human",
+        "capture_screenshot": false
+      },
+      "checkpoint_failed": {
+        "category": "recoverable",
+        "action": "retry",
+        "max_retries": 2,
+        "retry_wait_ms": 1000,
+        "on_exhausted": "hard_failure",
+        "capture_screenshot": false
+      },
+      "timeout": {
+        "category": "recoverable",
+        "action": "retry",
+        "max_retries": 2,
+        "retry_wait_ms": 2000,
+        "on_exhausted": "escalate_human",
+        "capture_screenshot": false
+      },
+      "session_expired": {
+        "category": "recoverable",
+        "action": "re_login",
+        "max_retries": 1,
+        "retry_wait_ms": 0,
+        "on_exhausted": "escalate_human",
+        "capture_screenshot": false
+      },
+      "wrong_page_state": {
+        "category": "hard_failure",
+        "action": "stop",
+        "capture_screenshot": true,
+        "message": "The page was not in the expected state and could not be recovered."
+      }
+    },
+    "step_8": {
+      "extraction_empty": {
+        "category": "hard_failure",
+        "action": "stop",
+        "capture_screenshot": true,
+        "message": "Result row rendered but the job title or sub unit cell was empty."
+      }
+    }
+  },
+
+  "self_healing": {
+    "enabled": false
+  },
+
+  "provenance": {
+    "source_run_id": "fixture-golden-0001",
+    "model_id": "claude-sonnet-5",
+    "notes": "Hand-written golden fixture for schema tests; not produced by a real discovery run."
+  }
+}

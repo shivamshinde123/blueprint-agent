@@ -1,0 +1,26 @@
+[project]
+name = "blueprint-agent"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=0.125.0",
+    "fastapi>=0.141.1",
+    "playwright>=1.62.0",
+    "pydantic>=2.13.4",
+    "python-dotenv>=1.2.3",
+    "uvicorn>=0.52.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Tests import `src.*` and `tests.conftest`; run them against the repo root.
+pythonpath = ["."]
+# Playwright-driven tests are async; auto mode means no per-test decorator.
+asyncio_mode = "auto"
+addopts = "-q --strict-markers"
