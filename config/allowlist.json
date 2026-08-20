@@ -3,6 +3,8 @@
   "permitted_domains": [
     "www.saucedemo.com",
     "saucedemo.com",
+    "demo.guru99.com",
+    "www.demo.guru99.com",
     "127.0.0.1",
     "localhost"
   ],
@@ -10,6 +12,7 @@
     "/inventory",
     "/cart",
     "/checkout",
+    "/V4",
     "/mock/"
   ],
   "permitted_actions": [

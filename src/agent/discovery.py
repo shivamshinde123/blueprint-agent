@@ -60,9 +60,12 @@ from src.artifact.schema import (
     ReplayConfig,
     ReplayMode,
     RiskLevel,
+    ScreenshotCoordinates,
+    ScreenshotLocator,
     Step,
     SurfaceType,
     Target,
+    Viewport,
 )
 from src.evidence.logger import LLMCallLog, RunLog, StepLog
 from src.llm.client import LLMClient
@@ -152,8 +155,13 @@ def to_artifact_locator(proposed: ProposedLocator) -> AccessibilityLocatorMethod
     # that, so fill in a defensible default rather than failing the turn.
     name = _unset(proposed.name)
     value = _unset(proposed.value)
+    nth = proposed.nth if proposed.nth >= 0 else None
     if method is AccessibilityMethod.GET_BY_ROLE and not name:
         name = value
+        if not name and nth is None:
+            # The model meant "the first one". Recording index 0 makes that an
+            # explicit, reviewable decision instead of an accident of ordering.
+            nth = 0
     if method is AccessibilityMethod.GET_BY_TEXT and not value:
         value = name
 
@@ -162,7 +170,7 @@ def to_artifact_locator(proposed: ProposedLocator) -> AccessibilityLocatorMethod
         role=_unset(proposed.role),
         name=name,
         value=value,
-        nth=proposed.nth if proposed.nth >= 0 else None,
+        nth=nth,
         pattern=_unset(proposed.pattern),
     )
 
@@ -958,9 +966,18 @@ class DiscoveryAgent:
             action=_action_type(decision.action),
         )
         if not working:
-            raise DiscoveryError(
-                f"could not resolve the proposed element by any accessibility "
-                f"method: {decision.locator.model_dump(exclude_none=True)}"
+            # Layer 1 has nothing for this element. That is the whole reason
+            # Layer 2 exists, so fall back to looking at the screen rather than
+            # abandoning the step.
+            #
+            # Deliberately per-element, not per-page. Judging a *page* sparse
+            # does not work on real sites: Guru99's login page exposes sixteen
+            # named interactive nodes -- navigation links and adverts -- while
+            # its actual form inputs carry no accessible name at all. A
+            # page-level switch reports a rich tree and the fallback never
+            # fires for the one element that needs it.
+            return await self._record_by_vision(
+                session, recorder, decision, before, run_log, start
             )
 
         locators = build_locators(decision.locator, methods=working)
@@ -1061,6 +1078,130 @@ class DiscoveryAgent:
             )
         )
         return f"{step.step_id}. {step.action.value}: {step.description}"
+
+    async def _record_by_vision(
+        self,
+        session: Session,
+        recorder: _Recorder,
+        decision: AgentDecision,
+        before: Observation,
+        run_log: RunLog,
+        start: float,
+    ) -> str:
+        """Locate an element by looking at the screen, and record it as fragile.
+
+        The Layer 2 path. Reached when every accessibility method failed for
+        this element, which on a legacy surface is the normal case rather than
+        an exception. The step is recorded ``fragile`` with the primary locator
+        marked unavailable, so replay does not waste a timeout re-trying a
+        layer discovery already proved useless here.
+        """
+        if self.llm is None:  # pragma: no cover - discovery always has one
+            raise DiscoveryError("the vision fallback needs a model client")
+
+        description = (
+            decision.visual_description
+            or decision.reasoning[:160]
+            or "the element the step acts on"
+        )
+        step_id = recorder.next_step_id()
+        log.info("layer 1 found nothing for step %s; looking at the screen", step_id)
+
+        # The probe carries a placeholder point: the schema validates on
+        # construction, and vision is about to supply the real one.
+        probe = ScreenshotLocator(
+            coordinates=ScreenshotCoordinates(x=0, y=0),
+            scroll_y=int(await session.page.evaluate("window.scrollY") or 0),
+            viewport=Viewport(
+                width=session.config.viewport.width,
+                height=session.config.viewport.height,
+            ),
+            visual_description=description,
+        )
+        resolved = await loc.resolve_by_vision(
+            session, probe, self.llm, step_id=step_id
+        )
+        point = resolved.point or (0, 0)
+        fallback = probe.model_copy(
+            update={"coordinates": ScreenshotCoordinates(x=point[0], y=point[1])}
+        )
+        usage = self.llm.calls[-1] if self.llm.calls else None
+        if usage:
+            run_log.record_llm_call(
+                LLMCallLog(
+                    timestamp=_now(),
+                    purpose="vision_locate",
+                    step_id=step_id,
+                    model=usage.model,
+                    provider=usage.provider,
+                    generation_id=usage.generation_id,
+                    prompt_tokens=usage.prompt_tokens,
+                    completion_tokens=usage.completion_tokens,
+                    cached_tokens=usage.cached_tokens,
+                )
+            )
+
+        locators = Locators(
+            primary=PrimaryLocator(methods=[], available=False),
+            fallback=fallback,
+        )
+
+        action = _action_type(decision.action) or ActionType.CLICK
+        if action is ActionType.FILL:
+            await loc.fill(
+                session, resolved, loc.substitute(decision.value, recorder.params) or ""
+            )
+        else:
+            await loc.click(session, resolved)
+        await settle(session)
+        after = await observe(session.page)
+
+        change = diff(before, after)
+        recorder.last_step_changed = (
+            True if action is ActionType.FILL else change.anything_changed
+        )
+        post, warning = synthesise_post_condition(
+            change,
+            before,
+            action=action,
+            locators=locators,
+            value=decision.value or None,
+            timeout_ms=8000,
+            avoid=_param_values(recorder.params),
+        )
+        if warning:
+            recorder.warnings.append(f"step {step_id}: {warning}")
+
+        step = Step(
+            step_id=step_id,
+            action=action,
+            description=decision.reasoning[:200],
+            fragile=True,
+            fragile_reason=(
+                "no accessibility method could resolve this element; the "
+                "surface exposes no usable name, role or label for it"
+            ),
+            risk_level=_risk(decision),
+            pre_condition=None,
+            locators=locators,
+            value=decision.value or None if action is ActionType.FILL else None,
+            post_condition=post,
+        )
+        recorder.add(step)
+        run_log.record_step(
+            StepLog(
+                step_id=step.step_id,
+                action=step.action.value,
+                description=step.description,
+                timestamp=_now(),
+                layer_used="screenshot",
+                locator_used=resolved.detail,
+                pre_condition="skipped",
+                post_condition="passed",
+                duration_ms=int((time.monotonic() - start) * 1000),
+            )
+        )
+        return f"{step.step_id}. {action.value} (located visually): {step.description}"
 
     async def _record_plain_navigation(
         self,

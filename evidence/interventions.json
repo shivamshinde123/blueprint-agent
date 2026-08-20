@@ -1,0 +1,16 @@
+[
+  {
+    "session_id": "1a7d56c9c41f",
+    "capability_id": "create_customer",
+    "step_id": 9,
+    "reason": "dead end: page unchanged for 3 consecutive turns",
+    "started_at": "2026-08-20T20:46:13.284+00:00",
+    "resumed_at": null,
+    "duration_s": null,
+    "operator_url": "http://127.0.0.1:8080/operator?session_id=1a7d56c9c41f",
+    "screenshot_before": "evidence\\screenshots\\handoff_step9_before_51dbf6.png",
+    "screenshot_after": null,
+    "url_before": "https://demo.guru99.com/V4/manager/addcustomerpage.php",
+    "url_after": null
+  }
+]

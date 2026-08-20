@@ -92,7 +92,15 @@ class Session:
         ``mouse.click``, which works in viewport space — the click would land
         somewhere else entirely, silently. See PLAN.md §11 C1.
         """
-        return await self.page.screenshot(full_page=False)
+        if self.page.is_closed():
+            raise BrowserError(
+                "cannot screenshot: the page has been closed. Sites that open "
+                "advert popups or replace the window will do this mid-run"
+            )
+        try:
+            return await self.page.screenshot(full_page=False)
+        except Exception as exc:
+            raise BrowserError(f"screenshot failed: {exc}") from exc
 
 
 def _context_options(config: BrowserConfig) -> dict[str, Any]:
