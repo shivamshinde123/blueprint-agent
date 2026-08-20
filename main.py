@@ -20,7 +20,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from src.artifact.schema import Artifact
-from src.settings import MODEL_ID, ensure_dirs
+from src.settings import MODEL_SLUG, ensure_dirs
 
 
 # --------------------------------------------------------------------------
@@ -110,7 +110,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="discovery may use the vision fallback (default: assisted)",
     )
     discover.add_argument(
-        "--model", default=MODEL_ID, help=f"model id (default: {MODEL_ID})"
+        "--model",
+        default=MODEL_SLUG,
+        help=f"gateway model slug (default: {MODEL_SLUG})",
     )
     discover.set_defaults(func=cmd_discover)
 

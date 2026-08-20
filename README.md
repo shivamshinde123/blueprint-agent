@@ -50,12 +50,31 @@ cp .env.example .env             # then fill in the values
 
 | Variable | Required | Notes |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | for `discover` | Not needed for `replay --mode strict` or `validate` |
+| `OPENROUTER_API_KEY` | for `discover` | <https://openrouter.ai/keys>. Not needed for `replay --mode strict` or `validate` |
 | `ORANGEHRM_USERNAME` / `ORANGEHRM_PASSWORD` | for the modern-web demo | Public demo: `Admin` / `admin123` |
 | `GURU99_USERNAME` / `GURU99_PASSWORD` | for the legacy demo | Request at <https://www.demo.guru99.com/> → *Demo Login*; these expire |
-| `BLUEPRINT_MODEL` | no | Defaults to `claude-sonnet-5` |
+| `BLUEPRINT_MODEL` | no | Defaults to `anthropic/claude-sonnet-5` |
+| `BLUEPRINT_PROVIDERS` | no | Pinned upstream routing, default `anthropic`. Empty string lets the gateway choose |
 
 `.env` is gitignored. Only `.env.example` is committed.
+
+### Model access
+
+Models are reached through **OpenRouter**, an OpenAI-compatible gateway, so
+trying a different model for the discovery loop is a one-line change:
+
+```bash
+BLUEPRINT_MODEL=google/gemini-3-pro uv run python main.py discover ...
+```
+
+Nothing outside [`src/llm/`](src/llm/) imports a provider SDK. Pointing
+`BLUEPRINT_LLM_BASE_URL` at another compatible endpoint — a different gateway,
+or a local server — works without further changes.
+
+Routing to the upstream provider is **pinned** by default, with gateway
+fallback disabled. A gateway silently substituting a different provider
+mid-run is precisely the failure mode a determinism-focused system should
+refuse, so it is opt-in rather than default.
 
 ---
 

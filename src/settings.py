@@ -27,22 +27,50 @@ ALLOWLIST_PATH = CONFIG_DIR / "allowlist.json"
 MOCK_DIR = ROOT / "mock"
 
 # --------------------------------------------------------------------------
-# Model
+# Project identity (sent as optional attribution headers)
 # --------------------------------------------------------------------------
 
-#: Handles both the accessibility-tree text loop and the screenshot vision
-#: fallback, so discovery needs exactly one model.
-#:
-#: Note: sampling parameters (temperature/top_p/top_k) are rejected by current
-#: models. Determinism in this system is structural — it comes from the
-#: artifact and the LLM-free replay path, not from pinning the sampler.
-#: See PLAN.md §11 C3.
-MODEL_ID = os.getenv("BLUEPRINT_MODEL", "claude-sonnet-5")
+PROJECT_NAME = "Blueprint Agent"
+PROJECT_URL = "https://github.com/shivamshinde123/blueprint-agent"
+
+# --------------------------------------------------------------------------
+# Model access — OpenRouter by default
+# --------------------------------------------------------------------------
+#
+# Access goes through an OpenAI-compatible gateway so that switching models is
+# a config change. Point BLUEPRINT_LLM_BASE_URL elsewhere (another gateway, a
+# local server) and nothing else in the codebase changes.
+#
+# One model serves both the accessibility-tree text loop and the screenshot
+# vision fallback, so discovery needs exactly one slug.
+
+LLM_BASE_URL = os.getenv("BLUEPRINT_LLM_BASE_URL", "https://openrouter.ai/api/v1")
+
+#: OpenRouter-style ``vendor/model`` slug. Browse at https://openrouter.ai/models
+MODEL_SLUG = os.getenv("BLUEPRINT_MODEL", "anthropic/claude-sonnet-5")
+
+#: Env var holding the gateway key.
+API_KEY_ENV = os.getenv("BLUEPRINT_API_KEY_ENV", "OPENROUTER_API_KEY")
+
+#: Upstream providers to route to, most preferred first. Pinning matters here:
+#: a gateway silently substituting a different provider mid-run is the wrong
+#: failure mode for a system built around reproducibility. Empty list = let the
+#: gateway choose.
+PINNED_PROVIDERS: tuple[str, ...] = tuple(
+    p.strip() for p in os.getenv("BLUEPRINT_PROVIDERS", "anthropic").split(",") if p.strip()
+)
+
+#: Opt back into gateway fallback when the pinned provider is unavailable.
+ALLOW_PROVIDER_FALLBACK = os.getenv("BLUEPRINT_ALLOW_PROVIDER_FALLBACK", "0") == "1"
 
 #: Reasoning depth for discovery decisions: low | medium | high | xhigh | max.
 DISCOVERY_EFFORT = os.getenv("BLUEPRINT_EFFORT", "high")
 
 MAX_TOKENS = 16_000
+
+#: Sampling parameters are deliberately absent. Current Claude models reject
+#: temperature/top_p/seed, and determinism here is structural: it lives in the
+#: artifact and the LLM-free replay path, not in the sampler. See PLAN.md C3.
 
 # --------------------------------------------------------------------------
 # Discovery limits (PLAN.md §5.2)
@@ -70,8 +98,9 @@ def operator_url(session_id: str) -> str:
 # --------------------------------------------------------------------------
 
 
-def anthropic_api_key() -> str | None:
-    return os.getenv("ANTHROPIC_API_KEY") or None
+def llm_api_key() -> str | None:
+    """Key for the model gateway, from whichever env var ``API_KEY_ENV`` names."""
+    return os.getenv(API_KEY_ENV) or None
 
 
 def credentials(prefix: str) -> dict[str, str | None]:

@@ -444,23 +444,25 @@ class AgentDecision(BaseModel):
     goal_achieved: bool
     stuck: bool                 # escalation Signal 3
 
-response = client.messages.parse(
-    model=MODEL_ID,
-    max_tokens=16000,
-    system=[{"type": "text", "text": DISCOVERY_SYSTEM_PROMPT,
-             "cache_control": {"type": "ephemeral"}}],   # stable prefix → cache it
-    messages=[...],
-    output_format=AgentDecision,
-)
-decision = response.parsed_output          # validated AgentDecision
+# src/llm/ owns all provider knowledge; the agent never imports an SDK.
+decision = llm.decide(
+    system=DISCOVERY_SYSTEM_PROMPT,   # stable prefix -> prompt-cached
+    user=render_observation(snapshot, goal, history),
+    schema=AgentDecision,
+    image_png=screenshot,             # only on the Layer 2 path
+).value                               # validated AgentDecision
 ```
 
-**API facts that constrain the design** (current models — verified against the Claude API reference):
+`LLMClient.decide` derives a strict JSON schema from the Pydantic model and
+sends it as `response_format`, so the response either validates or raises —
+there is no JSON-repair path to get subtly wrong.
 
-- `temperature` / `top_p` / `top_k` are **rejected with a 400** on Opus 5 and Sonnet 5. You *cannot* pin the sampler for determinism. This is fine, and it sharpens the project's thesis: **determinism lives in the artifact, not in the model** (§11 C3).
-- Thinking is adaptive: `thinking={"type": "adaptive"}`. `budget_tokens` is removed (400). Depth is controlled by `output_config={"effort": ...}`.
-- The system prompt carries the full schema spec and is byte-stable → prompt-cache it. Verify with `usage.cache_read_input_tokens > 0`.
-- Log `response._request_id` into the evidence file for every LLM call — free traceability.
+**API facts that constrain the design** (verified against OpenRouter's live catalogue for `anthropic/claude-sonnet-5`):
+
+- No `temperature` / `top_p` / `seed` in the model's supported parameters. You *cannot* pin the sampler for determinism. This is fine, and it sharpens the project's thesis: **determinism lives in the artifact, not in the model** (§11 C3).
+- Reasoning depth is `reasoning: {effort: ...}`, set from `settings.DISCOVERY_EFFORT`.
+- The system prompt carries the full schema spec and is byte-stable → prompt-cache it via a `cache_control` breakpoint. Verify with `usage.prompt_tokens_details.cached_tokens > 0`.
+- Log the generation id **and the serving provider** into the evidence file for every call — free traceability, and the audit trail C19 requires.
 
 ### 5.4 Recording rules
 
@@ -808,16 +810,33 @@ If the process dies mid-flow there is no checkpoint to resume from.
 
 | # | Decision | Chosen | Notes |
 |---|---|---|---|
-| **D1** | Model ID | **`claude-sonnet-5`** | Set in `src/settings.py:MODEL_ID`, overridable via `BLUEPRINT_MODEL`. Handles both the a11y-tree text loop and the vision fallback, so discovery needs one model. Recommendation had been Opus 5 for reasoning depth; Sonnet 5 is ~40% cheaper at the same 1M context and vision support, and swapping is a one-line change if discovery quality disappoints |
+| **D1** | Model ID | **`anthropic/claude-sonnet-5`** | Reached via OpenRouter (D5). Set in `src/settings.py:MODEL_SLUG`, overridable via `BLUEPRINT_MODEL`. Handles both the a11y-tree text loop and the vision fallback, so discovery needs one model. Recommendation had been Opus 5 for reasoning depth; Sonnet 5 is cheaper at the same 1M context and vision support, and swapping is now a one-line env change |
 | **D2** | Legacy surface | **Both** | Guru99 credentials received and in `.env`. Local zero-ARIA mock still to be built (§11 C11) as the reproducible fallback |
 | **D3** | Repo name | **`blueprint-agent`** | Matches the working directory; `pyproject.toml` name set |
 | **D4** | Python env | **uv** | `uv sync` + `uv run`; `.venv/` gitignored, `uv.lock` committed. Replaces the `requirements.txt` flow the plan originally assumed |
+| **D5** | Model gateway | **OpenRouter** | OpenAI-compatible endpoint via the `openai` SDK; the `anthropic` SDK is removed. One key, every model, so comparing candidates for the discovery loop is a config change. All provider knowledge is confined to `src/llm/` |
 
-### Consequences of D1 worth remembering
+### Consequences of D1 + D5 worth remembering
 
-- Sampling parameters (`temperature`, `top_p`, `top_k`) are **rejected with a 400** on Sonnet 5. Never send them (§11 C3).
-- Thinking is adaptive: `thinking={"type": "adaptive"}`; `budget_tokens` is removed. Depth is controlled by `output_config={"effort": ...}` — set to `high` in `settings.DISCOVERY_EFFORT`.
-- Prompt-cache the discovery system prompt: it carries the full schema spec, is byte-stable, and comfortably exceeds the ~1024-token minimum. Verify with `usage.cache_read_input_tokens > 0`.
+Verified against OpenRouter's live model catalogue for `anthropic/claude-sonnet-5`
+(1M context, `text`/`image`/`file` input, $2/$10 per MTok, cache read $0.20/MTok):
+
+- **Structured outputs are supported** (`structured_outputs`, `response_format`), so the discovery decision loop keeps its schema-valid-by-construction guarantee. This was the one capability that could have blocked the switch.
+- **Sampling parameters are absent** from the model's supported set — no `temperature`, `top_p`, or `seed`. Identical to the first-party constraint, so §11 C3 stands unchanged: determinism is structural, not sampler-based.
+- **Reasoning depth** maps to OpenRouter's unified `reasoning: {effort: ...}` rather than Anthropic's `output_config.effort`. Set from `settings.DISCOVERY_EFFORT`.
+- **Prompt caching** works via a pass-through `cache_control` breakpoint on the system prompt; cache hits show up as `usage.prompt_tokens_details.cached_tokens`. The discovery system prompt carries the full schema spec and is byte-stable, so it is worth caching.
+- **Routing is pinned** (`provider.order = ["anthropic"]`, `allow_fallbacks: false`). A gateway silently substituting a different upstream provider mid-run is the wrong failure mode for this project specifically; opt back in with `BLUEPRINT_ALLOW_PROVIDER_FALLBACK=1`.
+
+### New correction
+
+**C19 — A model gateway can silently re-route.** 🟡
+OpenRouter may fall back to a different upstream provider when the preferred
+one is unavailable. For a system whose thesis is deterministic replay, an
+invisible provider swap mid-discovery undermines the evidence: two runs of the
+"same" configuration could be served by different infrastructure.
+**Decision:** pin `provider.order` and disable fallbacks by default; record the
+serving provider and generation id in the evidence log for every call, so the
+discovery run is attributable after the fact.
 
 ---
 
