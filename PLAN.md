@@ -841,6 +841,22 @@ invisible provider swap mid-discovery undermines the evidence: two runs of the
 serving provider and generation id in the evidence log for every call, so the
 discovery run is attributable after the fact.
 
+**C20 — "Sparse accessibility tree" is the wrong test for a legacy page.** 🔴
+The design assumes a legacy surface yields an *empty or near-empty*
+accessibility tree, and uses named-node count as the Layer 1 / Layer 2 switch.
+It does not. A table-based page produces plenty of named nodes, because `cell`
+and `row` inherit an accessible name from their text content. The local mock
+yields **fourteen** — `cell "LOGIN"`, `cell "Password :"`, `row "LOGIN"` —
+while exposing no button and no named input at all. Under a named-node count
+the mock reads as a *rich* page, Layer 1 is attempted, every locator fails, and
+the screenshot fallback never fires. Caught by the test asserting the mock is
+sparse, not by reading.
+**Decision:** judge sparseness on **named nodes with interactive roles**
+(`button`, `link`, `textbox`, `combobox`, …), not named nodes in general.
+Threshold is 2: any page you can meaningfully drive exposes at least a control
+and a target. `Observation.interactive_count` is the switch; `named_node_count`
+is kept for diagnostics only.
+
 ---
 
 ## 13. Work Breakdown
