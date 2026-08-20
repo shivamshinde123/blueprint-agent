@@ -227,6 +227,24 @@ def test_get_by_role_requires_role_and_name(artifact_dict):
     assert "requires 'name'" in expect_rejected(artifact_dict, because="role w/o name")
 
 
+def test_role_without_name_is_allowed_with_an_explicit_index(artifact_dict):
+    """Position is a legitimate choice when the name is this run's data.
+
+    A typeahead suggestion reads "Peter Mac Anderson" for one employee and
+    something else for the next, so naming it records a capability that works
+    exactly once. `role + nth` -- the first option in the list -- stays correct
+    for every input, and is an explicit recorded decision rather than an
+    accident of ordering.
+    """
+    step_by_id(artifact_dict, 4)["locators"]["primary"]["methods"] = [
+        {"method": "get_by_role", "role": "option", "nth": 0}
+    ]
+    artifact = Artifact.model_validate(artifact_dict)
+    method = artifact.step_by_id(4).locators.primary.methods[0]
+    assert method.name is None
+    assert method.nth == 0
+
+
 def test_available_primary_must_list_methods(artifact_dict):
     step_by_id(artifact_dict, 4)["locators"]["primary"] = {
         "available": True,

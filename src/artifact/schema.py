@@ -115,6 +115,18 @@ class AccessibilityMethod(str, Enum):
     GET_BY_LABEL = "get_by_label"
     GET_BY_PLACEHOLDER = "get_by_placeholder"
     GET_BY_TEXT = "get_by_text"
+    #: The control sitting in the same field group as a label with this text.
+    #:
+    #: Last resort, and the one that rescues real applications. A caption is
+    #: only reachable by ``get_by_label`` when the markup actually wires it to
+    #: its control, and plenty of apps never do: OrangeHRM renders a visible
+    #: "Date of Birth" label whose input has no accessible name at all, so
+    #: every other method returns nothing while a human reads it instantly.
+    #:
+    #: Still identity-based rather than positional -- it keys on the visible
+    #: caption, which is what a person reads and what survives a redesign far
+    #: better than coordinates do.
+    GET_BY_FIELD_LABEL = "get_by_field_label"
 
 
 class ConditionType(str, Enum):
@@ -298,16 +310,25 @@ class AccessibilityLocatorMethod(Base):
     #: Accessible name. May contain ``{{param}}`` templates for dynamic labels.
     name: str | None = None
     value: str | None = None
+    #: Which match to take when the name is genuinely ambiguous.
+    #:
+    #: Real pages repeat labels: OrangeHRM's PIM search exposes *two* inputs
+    #: placeholdered "Type for hints..." (Employee Name and Supervisor Name),
+    #: both visible. Leaving that unresolved means either refusing the step or
+    #: silently guessing on every replay. Recording the index makes the choice
+    #: explicit, reviewable, and identical on every run.
+    nth: int | None = None
 
     @model_validator(mode="after")
     def check_required_fields_for_method(self) -> AccessibilityLocatorMethod:
         if self.method is AccessibilityMethod.GET_BY_ROLE:
             if not self.role:
                 raise ValueError("get_by_role requires 'role'")
-            if not self.name:
+            if not self.name and self.nth is None:
                 raise ValueError(
-                    "get_by_role requires 'name' — role alone is not specific "
-                    "enough to be stable"
+                    "get_by_role requires 'name', or an explicit 'nth' — a "
+                    "role on its own matches whatever happens to come first, "
+                    "which is not a decision anyone recorded"
                 )
         elif self.method is AccessibilityMethod.GET_BY_TEXT:
             if not self.value:

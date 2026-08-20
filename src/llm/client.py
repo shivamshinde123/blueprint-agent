@@ -155,6 +155,14 @@ class LLMClient:
         choice = response.choices[0]
         text = choice.message.content or ""
         if not text.strip():
+            if choice.finish_reason == "length":
+                raise LLMError(
+                    f"the model hit the {self.max_tokens} token output cap "
+                    f"before answering. Reasoning tokens count against this "
+                    f"budget, so a high-effort decision can spend the whole cap "
+                    f"deliberating. Raise BLUEPRINT_MAX_TOKENS, or lower "
+                    f"BLUEPRINT_EFFORT from {self.effort!r}."
+                )
             raise LLMError(
                 f"model returned an empty response "
                 f"(finish_reason={choice.finish_reason!r}); nothing to decide on"

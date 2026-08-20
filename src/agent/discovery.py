@@ -20,6 +20,7 @@ See PLAN.md §5.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import logging
@@ -75,11 +76,22 @@ log = logging.getLogger(__name__)
 #: actions is not going to converge.
 MAX_CONSECUTIVE_REFUSALS = 3
 
+#: Grace period after the network goes quiet, for the framework to re-render.
+RENDER_SETTLE_MS = 700
+
 EscalateFn = Callable[[str, int], Awaitable[None]]
 
 
 class DiscoveryError(RuntimeError):
     """Discovery could not produce an artifact."""
+
+
+class AlreadyExtracted(DiscoveryError):
+    """Every output the model asked for has already been recorded.
+
+    Not a failure: it means the run is finished and the model simply restated
+    its results. Handled by telling it so, rather than counting a step failure.
+    """
 
 
 @dataclass(slots=True)
@@ -101,6 +113,10 @@ class _Recorder:
     steps: list[Step] = field(default_factory=list)
     output_schema: dict[str, ExpectedType] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
+    #: Did the most recent step visibly change the page? A step that executed
+    #: cleanly but changed nothing is not progress -- see the dead-end note in
+    #: DiscoveryAgent.run.
+    last_step_changed: bool = True
 
     def next_step_id(self) -> int:
         return len(self.steps) + 1
@@ -128,15 +144,73 @@ def to_artifact_locator(proposed: ProposedLocator) -> AccessibilityLocatorMethod
         value = name
 
     return AccessibilityLocatorMethod(
-        method=method, role=proposed.role, name=name, value=value
+        method=method, role=proposed.role, name=name, value=value, nth=proposed.nth
     )
 
 
+def candidate_methods(proposed: ProposedLocator) -> list[AccessibilityLocatorMethod]:
+    """The proposed method first, then the other ways of asking for the same thing.
+
+    The model picks *a* method, and it can pick a plausible-but-wrong one. On
+    OrangeHRM's login page the accessibility tree exposes ``textbox "Password"``
+    but there is no ``<label for>``, so a ``get_by_label("Password")`` proposal
+    resolves to nothing even though the element is trivially findable by role.
+
+    Rather than lose the step, derive the alternatives from the same name and
+    try them in priority order. The artifact's ``methods`` list is built for
+    exactly this — recording only the single proposed method threw away the
+    resilience the schema was designed to carry.
+    """
+    primary = to_artifact_locator(proposed)
+    label = proposed.name or proposed.value
+    methods = [primary]
+
+    if not label:
+        return methods
+
+    alternatives = [
+        AccessibilityLocatorMethod(
+            method=AccessibilityMethod.GET_BY_ROLE,
+            role=proposed.role or "textbox",
+            name=label,
+            nth=proposed.nth,
+        ),
+        AccessibilityLocatorMethod(
+            method=AccessibilityMethod.GET_BY_LABEL, name=label
+        ),
+        AccessibilityLocatorMethod(
+            method=AccessibilityMethod.GET_BY_PLACEHOLDER, value=label
+        ),
+        AccessibilityLocatorMethod(
+            method=AccessibilityMethod.GET_BY_TEXT, value=label
+        ),
+        # Last resort: the control sitting beside a caption the markup never
+        # wired up. Without it, OrangeHRM's "Date of Birth" is unreachable by
+        # every accessible-name method even though a person reads it at once.
+        AccessibilityLocatorMethod(
+            method=AccessibilityMethod.GET_BY_FIELD_LABEL, name=label
+        ),
+    ]
+    for alternative in alternatives:
+        if not any(_same_method(alternative, existing) for existing in methods):
+            methods.append(alternative)
+    return methods
+
+
+def _same_method(a: AccessibilityLocatorMethod, b: AccessibilityLocatorMethod) -> bool:
+    return (a.method, a.role, a.name, a.value) == (b.method, b.role, b.name, b.value)
+
+
 def build_locators(
-    proposed: ProposedLocator, fallback: Any | None = None
+    proposed: ProposedLocator,
+    fallback: Any | None = None,
+    *,
+    methods: list[AccessibilityLocatorMethod] | None = None,
 ) -> Locators:
     return Locators(
-        primary=PrimaryLocator(methods=[to_artifact_locator(proposed)], available=True),
+        primary=PrimaryLocator(
+            methods=methods or [to_artifact_locator(proposed)], available=True
+        ),
         fallback=fallback,
     )
 
@@ -154,6 +228,7 @@ def synthesise_post_condition(
     locators: Locators | None,
     value: str | None,
     timeout_ms: int,
+    avoid: set[str] | None = None,
 ) -> tuple[Condition, str | None]:
     """Build a checkpoint asserting something the action actually caused.
 
@@ -189,7 +264,7 @@ def synthesise_post_condition(
             None,
         )
 
-    text = distinctive_new_text(change, before)
+    text = distinctive_new_text(change, before, avoid)
     if text:
         return (
             Condition(
@@ -227,6 +302,61 @@ def synthesise_post_condition(
         ),
         "no observable page change; checkpoint falls back to the current URL",
     )
+
+
+async def settle(session: Session, timeout_ms: int = 5000) -> None:
+    """Let a single-page app finish rendering before observing it.
+
+    `domcontentloaded` fires before a Vue or React app has drawn anything, so
+    a snapshot taken immediately after navigation shows an empty shell and the
+    first locator finds nothing. Waiting for the network to go quiet is
+    best-effort: a page with long-polling never reaches idle, and that is not
+    a reason to fail the step.
+    """
+    with contextlib.suppress(Exception):
+        await session.page.wait_for_load_state("networkidle", timeout=timeout_ms)
+    # Network-quiet is not render-complete: a framework re-renders a beat after
+    # its XHR resolves. OrangeHRM's PIM search goes from 342 named nodes to 57
+    # in that gap, so a snapshot taken at networkidle shows the *old* table and
+    # the step reads as "nothing changed" -- which sent the agent into clicking
+    # Search over and over.
+    #
+    # This is a render settle before *observing*, not a wait for success. Every
+    # actual success check is still a condition with a timeout; the replay
+    # engine sleeps nowhere.
+    with contextlib.suppress(Exception):
+        await session.page.wait_for_timeout(RENDER_SETTLE_MS)
+
+
+def _action_type(action: DecisionAction) -> ActionType | None:
+    try:
+        return ActionType(action.value)
+    except ValueError:
+        return None
+
+
+def _locator_echoes_value(
+    methods: list[AccessibilityLocatorMethod], value: str
+) -> bool:
+    """Does this locator find the element by the very text it is reading?"""
+    target = value.strip().lower()
+    if len(target) < 2:
+        return False
+    for method in methods:
+        for text in (method.name, method.value):
+            if not text:
+                continue
+            candidate = text.strip().lower()
+            if len(candidate) < 2:
+                continue
+            if candidate == target or candidate in target or target in candidate:
+                return True
+    return False
+
+
+def _param_values(params: dict[str, Any]) -> set[str]:
+    """Runtime values that must never end up inside a checkpoint."""
+    return {str(v) for v in params.values() if v is not None and str(v).strip()}
 
 
 def _url_tail(url: str) -> str:
@@ -389,17 +519,40 @@ class DiscoveryAgent:
             refusals = 0
 
             if self._is_risky(decision):
-                stopped = (
-                    f"agent proposed a {decision.risk_level} risk action during "
-                    f"discovery: {decision.reasoning}"
+                # An irreversible write -- creating a record, submitting a
+                # transaction. Recording such a flow is legitimate and often
+                # the point (that is what a capability *is*), but a person has
+                # to authorise it before it happens for real.
+                reason = (
+                    f"discovery wants to perform a {decision.risk_level} risk "
+                    f"action at step {recorder.next_step_id()}: "
+                    f"{decision.reasoning}"
                 )
-                await self._maybe_escalate(stopped, recorder.next_step_id())
-                break
+                if self.escalate is None:
+                    stopped = (
+                        f"{reason}. No escalation handler is configured, so it "
+                        f"was not performed. Re-run with --escalate to "
+                        f"authorise it."
+                    )
+                    break
+                # Blocks until the operator clicks Resume, then proceeds and
+                # records the step with its risk level intact, so replay will
+                # pause at the same point.
+                await self.escalate(reason, recorder.next_step_id())
+                log.info("human authorised the %s risk step", decision.risk_level)
 
             try:
                 summary = await self._execute_and_record(
                     session, recorder, decision, before, run_log
                 )
+            except AlreadyExtracted as done:
+                # Not a failure -- the outputs are in hand and the model is
+                # restating them. Tell it so and let it close out the run.
+                history.append(f"NOTE: {done}. The goal is complete.")
+                if recorder.output_schema:
+                    stopped = "goal achieved"
+                    break
+                continue
             except Exception as exc:
                 history.append(f"FAILED: {decision.action.value} - {exc}")
                 log.warning("step failed during discovery: %s", exc)
@@ -409,7 +562,24 @@ class DiscoveryAgent:
                     break
                 continue
 
+            # Say plainly when a step achieved nothing. Otherwise the history
+            # reads as an unbroken run of successes and the model has no signal
+            # that it is repeating itself -- it clicked one Search button four
+            # times in a row while its own history told it all four worked.
+            if not recorder.last_step_changed:
+                summary += "  <- this changed nothing on the page; try something else"
             history.append(summary)
+            # Restart the dead-end window only on *productive* steps.
+            #
+            # Two failure modes sit either side of this line. Clearing on every
+            # recorded step lets the agent click one button forever -- it once
+            # pressed Search nineteen times, each click "succeeding" and
+            # changing nothing. Never clearing reads a login form as a loop,
+            # because typing into a field leaves every (role, name) pair in the
+            # accessibility tree untouched. Progress therefore means the page
+            # actually changed, with a fill counting on its own.
+            if recorder.last_step_changed:
+                fingerprints.clear()
 
             if decision.goal_achieved and recorder.output_schema:
                 stopped = "goal achieved"
@@ -448,6 +618,12 @@ class DiscoveryAgent:
     # -- loop pieces -------------------------------------------------------
 
     def _is_dead_end(self, fingerprints: list[str]) -> bool:
+        """True when several *unproductive* turns left the page identical.
+
+        The window is cleared whenever a step is recorded, so this measures
+        turns that achieved nothing rather than turns that merely looked
+        similar. See the note where `fingerprints.clear()` is called.
+        """
         if len(fingerprints) < self.dead_end_threshold:
             return False
         recent = fingerprints[-self.dead_end_threshold :]
@@ -521,11 +697,85 @@ class DiscoveryAgent:
 
     # -- recording ---------------------------------------------------------
 
+    async def _working_methods(
+        self,
+        session: Session,
+        candidates: list[AccessibilityLocatorMethod],
+        params: dict[str, Any],
+        timeout: int,
+        action: ActionType | None = None,
+        extract_method: str | None = None,
+    ) -> list[AccessibilityLocatorMethod]:
+        """Keep the candidates that resolve *and* suit the action.
+
+        Resolvability alone is not enough. ``get_by_text("Employee Name")``
+        happily resolves OrangeHRM's ``<label>``, which is a perfectly real
+        element that simply cannot be typed into -- Playwright fails with
+        "Element is not an <input>". Recording that locator would bake the
+        failure into the artifact, so the element is checked against what the
+        step will actually do to it.
+        """
+        working: list[AccessibilityLocatorMethod] = []
+        for method in candidates:
+            probe = Locators(
+                primary=PrimaryLocator(methods=[method], available=True), fallback=None
+            )
+            resolved = await loc.try_accessibility_chain(
+                session.page, probe, params, timeout_ms=min(timeout, 2000)
+            )
+            if resolved is None or resolved.locator is None:
+                continue
+            if not await self._suits_action(resolved.locator, action, extract_method):
+                continue
+            # Bake in which match was taken when the name was ambiguous, so
+            # replay picks the same element rather than re-guessing.
+            index = (resolved.detail or {}).get("nth")
+            if index is not None:
+                method = method.model_copy(update={"nth": index})
+            working.append(method)
+        return working
+
+    @staticmethod
+    async def _suits_action(
+        locator: Any, action: ActionType | None, extract_method: str | None = None
+    ) -> bool:
+        """Can this element actually take the action we are about to record?
+
+        Resolvability is not enough. A ``<label>`` resolves perfectly well and
+        then fails at use: `fill` reports "Element is not an <input>", and
+        `input_value()` reports "Node is not an <input>". Worse, for a text
+        extraction a label *succeeds* and returns the field's caption -- "Date
+        of Birth" instead of the date -- which is a silently wrong artifact.
+        """
+        try:
+            tag = str(await locator.evaluate("el => el.tagName")).upper()
+
+            if action is ActionType.FILL:
+                return await locator.is_editable()
+
+            if action is ActionType.CLICK:
+                if not await locator.is_enabled():
+                    return False
+                # Clicking a label only proxies focus to its input.
+                return tag != "LABEL"
+
+            if action is ActionType.EXTRACT:
+                # A label holds the caption, never the value.
+                if tag == "LABEL":
+                    return False
+                if extract_method == ExtractMethod.GET_VALUE.value:
+                    return tag in ("INPUT", "TEXTAREA", "SELECT")
+                return True
+        except Exception:
+            return False
+        return True
+
     async def _record_navigation(
         self, session: Session, recorder: _Recorder, url: str, run_log: RunLog
     ) -> None:
         start = time.monotonic()
         await session.page.goto(url, wait_until="domcontentloaded")
+        await settle(session)
         after = await observe(session.page)
 
         step = Step(
@@ -573,20 +823,55 @@ class DiscoveryAgent:
                 session, recorder, decision, before, run_log, start
             )
 
+        # Extract steps carry per-extraction locators rather than one top-level
+        # locator, because a single step can read several fields from different
+        # places on the page. Requiring a top-level locator here rejected a
+        # perfectly well-formed extract decision.
+        if decision.action is DecisionAction.EXTRACT:
+            step = await self._record_extraction(
+                session, recorder, decision, None, None, timeout
+            )
+            recorder.add(step)
+            run_log.record_step(
+                StepLog(
+                    step_id=step.step_id,
+                    action=step.action.value,
+                    description=step.description,
+                    timestamp=_now(),
+                    layer_used="accessibility_tree",
+                    pre_condition="skipped",
+                    post_condition="passed",
+                    duration_ms=int((time.monotonic() - start) * 1000),
+                )
+            )
+            return f"{step.step_id}. extract: {sorted(recorder.output_schema)}"
+
         if decision.locator is None:
             raise DiscoveryError(
                 f"{decision.action.value} requires a locator but none was returned"
             )
 
-        locators = build_locators(decision.locator)
+        # Try the model's method, then the other ways of asking for the same
+        # element, and keep only the ones that genuinely resolve.
+        working = await self._working_methods(
+            session,
+            candidate_methods(decision.locator),
+            recorder.params,
+            timeout,
+            action=_action_type(decision.action),
+        )
+        if not working:
+            raise DiscoveryError(
+                f"could not resolve the proposed element by any accessibility "
+                f"method: {decision.locator.model_dump(exclude_none=True)}"
+            )
+
+        locators = build_locators(decision.locator, methods=working)
         resolved = await loc.try_accessibility_chain(
             session.page, locators, recorder.params, timeout_ms=timeout
         )
-        if resolved is None:
-            raise DiscoveryError(
-                f"could not resolve the proposed element: "
-                f"{decision.locator.model_dump(exclude_none=True)}"
-            )
+        if resolved is None:  # pragma: no cover - just verified above
+            raise DiscoveryError("element vanished between probe and use")
 
         # Capture the Layer 2 net for free while we hold the handle (C4).
         fallback = await loc.capture_fallback(
@@ -594,7 +879,7 @@ class DiscoveryAgent:
             resolved.locator,  # type: ignore[arg-type]
             decision.visual_description or decision.reasoning[:120],
         )
-        locators = build_locators(decision.locator, fallback)
+        locators = build_locators(decision.locator, fallback, methods=working)
 
         pre_condition = Condition(
             condition=ConditionType.ELEMENT_VISIBLE,
@@ -603,21 +888,21 @@ class DiscoveryAgent:
             on_fail=OnFail.RETRY,
         )
 
-        if decision.action is DecisionAction.EXTRACT:
-            step = await self._record_extraction(
-                session, recorder, decision, locators, pre_condition, timeout
-            )
-        elif decision.action is DecisionAction.FILL:
+        if decision.action is DecisionAction.FILL:
             value = decision.value or ""
             await loc.fill(session, resolved, loc.substitute(value, recorder.params) or "")
+            await settle(session, 2000)
             after = await observe(session.page)
+            change = diff(before, after)
+            recorder.last_step_changed = True  # a fill is progress by itself
             post, warning = synthesise_post_condition(
-                diff(before, after),
+                change,
                 before,
                 action=ActionType.FILL,
                 locators=locators,
                 value=value,
                 timeout_ms=timeout,
+                avoid=_param_values(recorder.params),
             )
             if warning:
                 recorder.warnings.append(f"step {step_id}: {warning}")
@@ -634,14 +919,22 @@ class DiscoveryAgent:
             )
         else:
             await loc.click(session, resolved)
+            # A single-page app re-renders on click without navigating, so the
+            # new view does not exist yet. Observing immediately shows an empty
+            # shell: OrangeHRM's PIM page reports 0 interactive nodes right
+            # after the click and 24 once the network goes quiet.
+            await settle(session)
             after = await observe(session.page)
+            change = diff(before, after)
+            recorder.last_step_changed = change.anything_changed
             post, warning = synthesise_post_condition(
-                diff(before, after),
+                change,
                 before,
                 action=ActionType.CLICK,
                 locators=locators,
                 value=None,
                 timeout_ms=timeout,
+                avoid=_param_values(recorder.params),
             )
             if warning:
                 recorder.warnings.append(f"step {step_id}: {warning}")
@@ -683,6 +976,7 @@ class DiscoveryAgent:
     ) -> str:
         target = decision.url or ""
         await session.page.goto(target, wait_until="domcontentloaded")
+        await settle(session)
         after = await observe(session.page)
         step = Step(
             step_id=recorder.next_step_id(),
@@ -718,23 +1012,56 @@ class DiscoveryAgent:
         session: Session,
         recorder: _Recorder,
         decision: AgentDecision,
-        locators: Locators,
-        pre_condition: Condition,
+        locators: Locators | None,
+        pre_condition: Condition | None,
         timeout: int,
     ) -> Step:
         if not decision.extractions:
             raise DiscoveryError("extract action returned no extractions")
 
-        extractions: list[Extraction] = []
-        for proposed in decision.extractions:
-            sub_locators = build_locators(proposed.locator)
-            resolved = await loc.try_accessibility_chain(
-                session.page, sub_locators, recorder.params, timeout_ms=timeout
+        # The model can propose the same field twice -- re-extracting after a
+        # page settles, or restating outputs it already has. Recording both
+        # produces an artifact the validator rejects for duplicate output keys,
+        # which throws away an otherwise complete run at the last moment.
+        fresh = [
+            e for e in decision.extractions
+            if e.output_key not in recorder.output_schema
+        ]
+        if not fresh:
+            raise AlreadyExtracted(
+                f"every requested output is already recorded: "
+                f"{sorted(recorder.output_schema)}"
             )
-            if resolved is None:
+
+        extractions: list[Extraction] = []
+        # Staged, not written straight into the recorder: if a later extraction
+        # in this same step fails, the step is never committed, and a schema
+        # already carrying the earlier keys would declare outputs that nothing
+        # produces. The artifact validator catches that -- at the very end of an
+        # otherwise complete run.
+        staged_schema: dict[str, ExpectedType] = {}
+        for proposed in fresh:
+            working = await self._working_methods(
+                session,
+                candidate_methods(proposed.locator),
+                recorder.params,
+                timeout,
+                action=ActionType.EXTRACT,
+                extract_method=proposed.extract_method,
+            )
+            if not working:
                 raise DiscoveryError(
                     f"could not resolve the element for output "
                     f"{proposed.output_key!r}"
+                )
+            sub_locators = build_locators(proposed.locator, methods=working)
+            resolved = await loc.try_accessibility_chain(
+                session.page, sub_locators, recorder.params, timeout_ms=timeout
+            )
+            if resolved is None:  # pragma: no cover - just verified above
+                raise DiscoveryError(
+                    f"element for {proposed.output_key!r} vanished between "
+                    f"probe and read"
                 )
 
             method = _extract_method(proposed.extract_method)
@@ -743,6 +1070,20 @@ class DiscoveryAgent:
                 raise DiscoveryError(
                     f"output {proposed.output_key!r} resolved to an empty value; "
                     f"refusing to record an extraction that returns nothing"
+                )
+
+            # An extraction locator must not be identified by the value it
+            # reads. That is circular -- it only finds the element when the
+            # answer is already known -- so the artifact returns this run's
+            # value for every future input. A real run recorded
+            # `get_by_text("$29.99")` for a product price, which would have
+            # reported $29.99 for every product in the catalogue.
+            if _locator_echoes_value(working, value):
+                raise DiscoveryError(
+                    f"the locator for {proposed.output_key!r} is identified by "
+                    f"the value it reads, so it would only ever find this run's "
+                    f"answer. Locate the element by its label, its role, or its "
+                    f"position on the page instead -- never by its contents."
                 )
 
             fallback = await loc.capture_fallback(
@@ -754,13 +1095,18 @@ class DiscoveryAgent:
             extractions.append(
                 Extraction(
                     output_key=proposed.output_key,
-                    locators=build_locators(proposed.locator, fallback),
+                    locators=build_locators(
+                        proposed.locator, fallback, methods=working
+                    ),
                     extract_method=method,
                     expected_type=expected,
                     required=True,
                 )
             )
-            recorder.output_schema[proposed.output_key] = expected
+            staged_schema[proposed.output_key] = expected
+
+        # Every extraction resolved and returned a value: commit the schema.
+        recorder.output_schema.update(staged_schema)
 
         return Step(
             step_id=recorder.next_step_id(),

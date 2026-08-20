@@ -55,6 +55,17 @@ SPARSE_INTERACTIVE_THRESHOLD = 2
 #: emit thousands of lines, and the tail is almost always footer boilerplate.
 MAX_SNAPSHOT_CHARS = 12_000
 
+#: Private-use-area codepoints, where icon fonts (Font Awesome and friends)
+#: put their glyphs. They surface in the accessibility tree as meaningless
+#: characters beside real labels -- OrangeHRM's login page emits one just
+#: before `Username`. They carry no information, cost tokens, and crash any
+#: non-UTF-8 console that tries to log them.
+PRIVATE_USE = re.compile(
+    f"[{chr(0xE000)}-{chr(0xF8FF)}"
+    f"{chr(0xF0000)}-{chr(0xFFFFD)}"
+    f"{chr(0x100000)}-{chr(0x10FFFD)}]"
+)
+
 
 @dataclass(slots=True)
 class Observation:
@@ -119,7 +130,7 @@ async def observe(page: Page) -> Observation:
     except Exception:  # pragma: no cover - page may be mid-navigation
         title = ""
 
-    snapshot = await _aria_snapshot(page)
+    snapshot = PRIVATE_USE.sub("", await _aria_snapshot(page))
     truncated = len(snapshot) > MAX_SNAPSHOT_CHARS
     if truncated:
         snapshot = snapshot[:MAX_SNAPSHOT_CHARS] + "\n... (snapshot truncated)"
@@ -224,24 +235,52 @@ def diff(before: Observation, after: Observation) -> Change:
     )
 
 
-def distinctive_new_text(change: Change, before: Observation) -> str | None:
-    """Text that appeared and was not present beforehand.
+#: Roles whose accessible name is the *data* on the page rather than its
+#: structure. A checkpoint built from one of these encodes whatever the
+#: recording run happened to find.
+DATA_ROLES = frozenset({"cell", "gridcell", "row", "rowheader", "option", "listitem"})
 
-    Deliberately rejects anything already in the before-snapshot: a checkpoint
-    that was true before the action verifies nothing.
+
+def distinctive_new_text(
+    change: Change, before: Observation, avoid: set[str] | None = None
+) -> str | None:
+    """Text that appeared, was not there before, and is not run-specific data.
+
+    Two filters, and the second one matters as much as the first:
+
+    A checkpoint that was already true before the action verifies nothing --
+    hence the before-snapshot check.
+
+    A checkpoint built from the *result* of the action is worse than useless:
+    it passes for the recorded input and fails for every other one. A real run
+    of this recorder produced `page_contains_text: "Anderson"` after a search,
+    which is the surname the recording happened to return, so replaying the
+    same artifact with any other employee id failed at that step. Candidates
+    are therefore ranked away from data-bearing roles and rejected outright if
+    they overlap a parameter value. See PLAN.md §11 C21.
     """
     before_lower = before.snapshot.lower()
-    candidates = [
-        name
-        for _, name in change.appeared
-        if name and len(name) >= 3 and name.lower() not in before_lower
-    ]
+    blocked = {a.lower() for a in (avoid or set()) if a}
+
+    candidates: list[tuple[str, str]] = []
+    for role, name in change.appeared:
+        if not name or len(name) < 3:
+            continue
+        lowered = name.lower()
+        if lowered in before_lower:
+            continue
+        if any(lowered in b or b in lowered for b in blocked):
+            continue
+        candidates.append((role, name))
+
     if not candidates:
         return None
-    # Prefer short, stable-looking text: long strings tend to embed per-run
-    # values (names, ids, totals) that will not recur on the next replay.
-    candidates.sort(key=lambda s: (_looks_variable(s), len(s)))
-    return candidates[0]
+
+    # Structure over data; then stable-looking over variable; then short.
+    candidates.sort(
+        key=lambda rn: (rn[0] in DATA_ROLES, _looks_variable(rn[1]), len(rn[1]))
+    )
+    return candidates[0][1]
 
 
 def _looks_variable(text: str) -> bool:

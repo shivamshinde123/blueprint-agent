@@ -91,6 +91,12 @@ class Allowlist:
         if self.permitted_url_patterns:
             parsed = urlparse(url)
             path = parsed.path or "/"
+            # The application's own front door. Every flow starts by opening it,
+            # and it is not a route the agent navigated *to* -- requiring it to
+            # match a route pattern rejects the first step of every artifact.
+            # The domain check above has already run.
+            if path == "/":
+                return
             if not any(p in path for p in self.permitted_url_patterns):
                 raise BlockedByAllowlist(
                     f"path {path!r} on {parsed.hostname} matches no permitted "

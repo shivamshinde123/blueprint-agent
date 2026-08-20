@@ -66,7 +66,10 @@ ALLOW_PROVIDER_FALLBACK = os.getenv("BLUEPRINT_ALLOW_PROVIDER_FALLBACK", "0") ==
 #: Reasoning depth for discovery decisions: low | medium | high | xhigh | max.
 DISCOVERY_EFFORT = os.getenv("BLUEPRINT_EFFORT", "high")
 
-MAX_TOKENS = 16_000
+# Reasoning tokens count against this budget, so a high-effort decision can
+# exhaust a 16k cap before emitting any answer -- which surfaces as an empty
+# response with finish_reason "length", not as an obvious error.
+MAX_TOKENS = int(os.getenv("BLUEPRINT_MAX_TOKENS", "32000"))
 
 #: Sampling parameters are deliberately absent. Current Claude models reject
 #: temperature/top_p/seed, and determinism here is structural: it lives in the
@@ -76,8 +79,12 @@ MAX_TOKENS = 16_000
 # Discovery limits (PLAN.md §5.2)
 # --------------------------------------------------------------------------
 
-MAX_DISCOVERY_STEPS = 25
-DISCOVERY_TIMEOUT_S = 300
+# Generous enough for a real flow that needs a few corrections. An eight-step
+# task can legitimately take fifteen turns when a typeahead has to be
+# re-selected or a search re-run; the dead-end detector, not this cap, is what
+# stops a genuinely stuck agent.
+MAX_DISCOVERY_STEPS = 40
+DISCOVERY_TIMEOUT_S = 600
 DEAD_END_THRESHOLD = 3
 
 # --------------------------------------------------------------------------

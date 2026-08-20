@@ -268,6 +268,12 @@ class ReplayEngine:
             # 5-6. Resolve and act.
             try:
                 resolved = await self._act(session, step, params, outputs)
+            except ReplayFailure:
+                # Already classified, and the artifact may declare a specific
+                # handler for that error type. Re-classifying it here would
+                # silently route an extraction_empty to the wrong_page_state
+                # handler instead.
+                raise
             except Exception as exc:
                 error_type = classify_exception(exc)
                 verdict = self.tracker.record(step.step_id, error_type)
@@ -385,12 +391,26 @@ class ReplayEngine:
         params: dict[str, Any],
         outputs: dict[str, Any],
     ) -> None:
+        timeout_ms = self.artifact.replay_config.default_timeout_ms
         for extraction in step.extractions or []:
             resolved = await self._resolve(session, extraction.locators, params, step)
             raw = await loc.read_value(
                 session, resolved, extraction.extract_method.value
             )
             value = raw.strip()
+
+            # A framework populates field values after the route has already
+            # changed, so an empty read moments after navigation usually means
+            # "not rendered yet" rather than "no value". Wait for it, rather
+            # than failing a run that would have succeeded a heartbeat later.
+            if not value and extraction.required:
+                deadline = time.monotonic() + timeout_ms / 1000
+                while not value and time.monotonic() < deadline:
+                    await cond._sleep_ms(cond.POLL_INTERVAL_MS)
+                    raw = await loc.read_value(
+                        session, resolved, extraction.extract_method.value
+                    )
+                    value = raw.strip()
 
             if not value and extraction.required:
                 raise ReplayFailure(

@@ -94,7 +94,65 @@ def build_playwright_locator(
         return page.get_by_placeholder(value or name or "", exact=False)
     if method.method is AccessibilityMethod.GET_BY_TEXT:
         return page.get_by_text(value or name or "", exact=False)
+    if method.method is AccessibilityMethod.GET_BY_FIELD_LABEL:
+        return page.locator(field_label_xpath(name or value or ""))
     raise ElementNotFound(f"unsupported locator method: {method.method}")  # pragma: no cover
+
+
+def xpath_literal(text: str) -> str:
+    """Quote *text* for XPath, which has no escape character.
+
+    A caption containing an apostrophe -- "Driver's License Number" -- cannot
+    be wrapped in single quotes, and one containing both quote styles has to be
+    assembled with concat().
+    """
+    if "'" not in text:
+        return f"'{text}'"
+    if '"' not in text:
+        return f'"{text}"'
+    parts = ", ".join(f"'{piece}'" for piece in text.split("'") if piece)
+    return f'concat({parts})' if parts else "''"
+
+
+def field_label_xpath(label: str) -> str:
+    """The form control belonging to a visible caption that is not wired to it.
+
+    Walks up from the label to the nearest ancestor that actually contains a
+    control, then back down to it -- which is how a person reads a form: the
+    box under or beside the words.
+    """
+    literal = xpath_literal(label)
+    return (
+        f"xpath=//label[normalize-space(.)={literal}]"
+        f"/ancestor::*[.//input or .//textarea or .//select][1]"
+        f"//*[self::input or self::textarea or self::select]"
+    )
+
+
+async def _pick(candidate: Locator, method: AccessibilityLocatorMethod) -> tuple[Locator, int | None] | None:
+    """Narrow a possibly-ambiguous match down to one element.
+
+    Returns the chosen locator and the index it corresponds to, or ``None`` if
+    nothing usable was found. When the artifact records an ``nth`` the choice
+    is already made; otherwise the first *visible* match is taken and its index
+    reported, so discovery can record it and replay reproduce it exactly.
+    """
+    count = await candidate.count()
+    if count == 0:
+        return None
+
+    if method.nth is not None:
+        if method.nth >= count:
+            return None
+        return candidate.nth(method.nth), method.nth
+
+    if count == 1:
+        return candidate.first, None
+
+    visible = [i for i in range(min(count, 20)) if await candidate.nth(i).is_visible()]
+    if not visible:
+        return None
+    return candidate.nth(visible[0]), visible[0]
 
 
 async def try_accessibility_chain(
@@ -114,28 +172,10 @@ async def try_accessibility_chain(
 
     for method in locators.primary.methods:
         try:
-            candidate = build_playwright_locator(page, method, params)
-            count = await candidate.count()
-            if count == 0:
+            picked = await _pick(build_playwright_locator(page, method, params), method)
+            if picked is None:
                 continue
-            if count > 1:
-                # Ambiguity is a correctness risk: clicking "a Submit button"
-                # when three exist is how the wrong form gets submitted. Take
-                # the first only if it is the one that is actually visible.
-                visible = [
-                    i for i in range(min(count, 10)) if await candidate.nth(i).is_visible()
-                ]
-                if len(visible) != 1:
-                    log.debug(
-                        "locator %s matched %d elements (%d visible); skipping",
-                        method.method.value,
-                        count,
-                        len(visible),
-                    )
-                    continue
-                candidate = candidate.nth(visible[0])
-            else:
-                candidate = candidate.first
+            candidate, index = picked
 
             await candidate.wait_for(state="visible", timeout=timeout_ms)
             return Resolved(
@@ -146,6 +186,7 @@ async def try_accessibility_chain(
                     "role": method.role,
                     "name": substitute(method.name, params),
                     "value": substitute(method.value, params),
+                    "nth": index,
                 },
             )
         except Exception:

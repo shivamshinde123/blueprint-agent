@@ -178,6 +178,43 @@ def test_stable_text_is_preferred_over_variable_text():
     assert distinctive_new_text(diff(before, after), before) == "Results"
 
 
+def test_checkpoint_avoids_the_run_s_own_data():
+    """The C21 case, observed in a real run.
+
+    Discovery searched for an employee id and synthesised
+    `page_contains_text: "Anderson"` -- the surname that search happened to
+    return. Replaying with any other id then failed at that step, because the
+    checkpoint asserted *which* result rather than *that* there was one.
+    """
+    before = make("http://x/a", '- button "Search"')
+    after = make(
+        "http://x/a",
+        '- button "Search"\n- status "Records Found"\n- cell "Anderson"',
+    )
+    chosen = distinctive_new_text(diff(before, after), before)
+    assert chosen == "Records Found", "structure must win over table data"
+
+
+def test_text_matching_a_parameter_value_is_rejected():
+    before = make("http://x/a", '- button "Search"')
+    after = make("http://x/a", '- button "Search"\n- cell "Anderson"')
+    assert distinctive_new_text(diff(before, after), before, {"Anderson"}) is None
+
+
+def test_partial_overlap_with_a_parameter_is_rejected():
+    before = make("http://x/a", '- button "Go"')
+    after = make("http://x/a", '- button "Go"\n- cell "Peter Anderson"')
+    assert distinctive_new_text(diff(before, after), before, {"Anderson"}) is None
+
+
+def test_data_role_is_used_when_nothing_structural_appeared():
+    """Better a data-derived checkpoint than none at all -- but only as a
+    last resort, after structural candidates are exhausted."""
+    before = make("http://x/a", '- button "Go"')
+    after = make("http://x/a", '- button "Go"\n- cell "Results here"')
+    assert distinctive_new_text(diff(before, after), before) == "Results here"
+
+
 def test_very_short_text_is_ignored():
     before = make("http://x/a", "")
     after = make("http://x/a", '- cell "OK"')

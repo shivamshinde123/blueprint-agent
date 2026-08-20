@@ -70,6 +70,17 @@ def test_permitted_domain_but_forbidden_route_is_blocked(allowlist):
         allowlist.check_url("https://opensource-demo.orangehrmlive.com/admin/deleteAll")
 
 
+def test_application_root_is_permitted(allowlist):
+    """Every flow opens the app's front door; it is not a route violation."""
+    allowlist.check_url("https://opensource-demo.orangehrmlive.com/")
+    allowlist.check_url("https://opensource-demo.orangehrmlive.com")
+
+
+def test_root_is_still_domain_checked(allowlist):
+    with pytest.raises(BlockedByAllowlist, match="not in the allowlist"):
+        allowlist.check_url("https://evil.example.com/")
+
+
 def test_file_scheme_is_blocked(allowlist):
     """file:// on a permitted-looking host would expose the local filesystem."""
     with pytest.raises(BlockedByAllowlist, match="scheme"):
@@ -127,11 +138,15 @@ def test_preflight_checks_every_navigate_step(artifact, allowlist):
 
 
 def test_target_origin_is_checked_without_route_patterns(allowlist):
-    """`target.url` names the application and is usually a bare origin, so
-    applying route patterns to it would reject every valid artifact."""
-    allowlist.check_origin("https://opensource-demo.orangehrmlive.com")
+    """`target.url` names the application, so route patterns must not apply.
+
+    A tenant override can point the target at a deep path; `check_origin`
+    accepts it on domain alone, while `check_url` — used for real navigation —
+    still enforces the permitted routes.
+    """
+    allowlist.check_origin("https://opensource-demo.orangehrmlive.com/admin/portal")
     with pytest.raises(BlockedByAllowlist, match="no permitted route"):
-        allowlist.check_url("https://opensource-demo.orangehrmlive.com")
+        allowlist.check_url("https://opensource-demo.orangehrmlive.com/admin/portal")
 
 
 def test_origin_check_still_enforces_domain_and_scheme(allowlist):

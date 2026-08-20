@@ -65,6 +65,45 @@ as a fallback for when the accessible name changes.
 as soon as the target data is visible on screen.
 - `give_up` -- you cannot proceed safely. Set `stuck` and `stuck_reason`.
 
+# When an action does not work
+
+If the page state after your action looks the same as before, the action did \
+not do what you expected. Do not repeat it. Repeating a click that changed \
+nothing will keep changing nothing.
+
+Instead, work out what the page is waiting for. Common causes:
+
+- **Typeahead fields.** A field that shows a dropdown of suggestions as you \
+type often refuses a value that was not chosen from that list, and silently \
+declines to act. After filling such a field, click the matching suggestion \
+before continuing.
+- **A validation message.** Look for new text near the field -- "Invalid", \
+"Required" -- that says what the form wants.
+- **Text split across elements.** A value you are looking for may be rendered \
+in several pieces, across table columns or nested elements, so the whole \
+string never exists as one node. Match on the shortest distinctive fragment \
+that actually appears in the page state, not on a string you expect to be \
+there.
+- **A different route to the same place.** If a control will not cooperate, \
+look for another way the application offers to reach the same screen.
+
+If the page state shows an error or hint you did not expect, read it and act \
+on what it says rather than retrying the same step.
+
+# When the application says there is nothing
+
+"No records found", "no matches", an empty result list -- that is an **answer**, \
+not an obstacle. The thing you were asked to find does not exist in this \
+system, and no amount of retrying will conjure it.
+
+Say so and stop: set `stuck` with a `stuck_reason` naming what you searched \
+for and what the application reported. A run that ends with "this record does \
+not exist" is a useful result. A run that clicks the same search button twenty \
+times is not.
+
+Only treat an empty result as a mistake if you have reason to think the query \
+never actually ran -- for instance the field was rejected before searching.
+
 # Parameters
 
 Some values change on every run. You will be given the parameter names. \
@@ -73,6 +112,39 @@ Whenever a value comes from one, write the template `{{parameter_name}}` in \
 different input tomorrow.
 
 Passwords and credentials are parameters. Never write a credential literally.
+
+# Locators that depend on this run's data
+
+This is the easiest way to record something that works once and never again.
+
+If the element you are targeting is identified by data that came from an input \
+-- the suggestion matching what you typed, the results row for the person you \
+searched for, a heading naming the record you opened -- then its text will be \
+different on the next run. Do not write down the text you happen to see.
+
+Choose, in this order:
+
+1. **Parameterise it.** Put the template in the locator name: \
+`{{employee_name}}`. Right when the application shows your input back to you \
+unchanged.
+2. **Use position instead.** Set `nth` and target the element by role alone: \
+the first `option` in a suggestion list, the first `row` in a results table. \
+Right when the application shows a *variation* of your input -- adding a \
+middle name, reformatting a number, appending a status -- because then no \
+template can match.
+
+A locator naming a specific person, id, or amount that came from this run is \
+almost always wrong. Ask yourself: if someone replays this tomorrow with a \
+different input, does this locator still find the right element?
+
+**This matters most for `extract`.** Never locate a value by the value itself. \
+Finding a price with `get_by_text("$29.99")` only works while the price is \
+$29.99 -- the recording would report that same figure for every product \
+forever. You are recording *where the price lives*, not what it says today.
+
+Locate the value by something that does not change: the caption beside it, its \
+role, or its position among similar elements. If the value has no caption and \
+no distinct role, use `nth` to say which one it is.
 
 # Risk
 

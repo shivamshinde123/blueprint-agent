@@ -33,6 +33,9 @@ if TYPE_CHECKING:  # pragma: no cover
 
 log = logging.getLogger(__name__)
 
+#: Default timeout for Playwright actions on a live page.
+ACTION_TIMEOUT_MS = 15_000
+
 
 class BrowserError(RuntimeError):
     """The browser could not be started in the required configuration."""
@@ -145,7 +148,11 @@ async def browser_session(
             ) from exc
 
         context = await browser.new_context(**_context_options(config))
-        context.set_default_timeout(8000)
+        # Playwright actions (click, fill) use this; artifact conditions carry
+        # their own timeouts. Deliberately generous: OrangeHRM's SPA completes
+        # a click and then leaves a scheduled navigation pending for several
+        # seconds, so a tight default fails actions that actually worked.
+        context.set_default_timeout(ACTION_TIMEOUT_MS)
         page = await context.new_page()
         session = Session(browser=browser, context=context, page=page, config=config)
 

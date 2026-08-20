@@ -55,6 +55,16 @@ class ProposedLocator(Base):
     name: str | None = Field(default=None, description="Accessible name or label")
     #: Literal text, for get_by_text and get_by_placeholder.
     value: str | None = Field(default=None, description="Text or placeholder value")
+    #: Which match to take, when position is more stable than the name.
+    nth: int | None = Field(
+        default=None,
+        description=(
+            "0-based index to select by position instead of by name. Use when "
+            "the element's text comes from this run's data -- the first "
+            "suggestion in a typeahead list, the first row of a results table "
+            "-- so the locator stays correct for a different input."
+        ),
+    )
 
 
 class ProposedExtraction(Base):

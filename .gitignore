@@ -44,3 +44,5 @@ artifacts/heal/
 Thumbs.db
 .idea/
 .vscode/
+artifacts/
+evidence/
