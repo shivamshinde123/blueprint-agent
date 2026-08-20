@@ -149,7 +149,7 @@ async def browser_session(
 
         context = await browser.new_context(**_context_options(config))
         # Playwright actions (click, fill) use this; artifact conditions carry
-        # their own timeouts. Deliberately generous: OrangeHRM's SPA completes
+        # their own timeouts. Deliberately generous: a single-page app completes
         # a click and then leaves a scheduled navigation pending for several
         # seconds, so a tight default fails actions that actually worked.
         context.set_default_timeout(ACTION_TIMEOUT_MS)

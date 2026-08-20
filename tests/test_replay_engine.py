@@ -50,9 +50,9 @@ def build_artifact(**overrides: Any) -> Artifact:
             "surface_type": "modern_web",
         },
         "input_parameters": {
-            "employee_name": {"type": "string", "required": True, "sensitive": False},
+            "product_name": {"type": "string", "required": True, "sensitive": False},
         },
-        "output_schema": {"job_title": "string", "sub_unit": "string"},
+        "output_schema": {"item_name": "string", "item_price": "string"},
         "replay_config": {
             "browser": {"headless": True, "enforce_strictly": False},
             "mode": "strict",
@@ -80,11 +80,11 @@ def build_artifact(**overrides: Any) -> Artifact:
                 "description": "Type the employee name",
                 "fragile": False,
                 "risk_level": "low",
-                "value": "{{employee_name}}",
+                "value": "{{product_name}}",
                 "locators": locator("get_by_label", name="Employee Name"),
                 "post_condition": {
                     "condition": "element_has_value",
-                    "value": "{{employee_name}}",
+                    "value": "{{product_name}}",
                     "locators": locator("get_by_label", name="Employee Name"),
                     "on_fail": "retry",
                 },
@@ -110,15 +110,15 @@ def build_artifact(**overrides: Any) -> Artifact:
                 "risk_level": "safe",
                 "extractions": [
                     {
-                        "output_key": "job_title",
-                        "locators": locator("get_by_text", value="Senior Engineer"),
+                        "output_key": "item_name",
+                        "locators": locator("get_by_text", value="Sauce Labs Backpack"),
                         "extract_method": "inner_text",
                         "expected_type": "string",
                         "required": True,
                     },
                     {
-                        "output_key": "sub_unit",
-                        "locators": locator("get_by_text", value="Engineering"),
+                        "output_key": "item_price",
+                        "locators": locator("get_by_text", value="$29.99"),
                         "extract_method": "inner_text",
                         "expected_type": "string",
                         "required": True,
@@ -133,17 +133,17 @@ def build_artifact(**overrides: Any) -> Artifact:
         "business_outcomes": [
             {
                 "step_ids": [3, 4],
-                "name": "Employee not found",
+                "name": "Cart is empty",
                 "detect": {
                     "condition": "page_contains_text",
-                    "value": "No Records Found",
+                    "value": "Your cart is empty",
                     "timeout_ms": 500,
                     "on_fail": "retry",
                 },
-                "outcome_code": "EMPLOYEE_NOT_FOUND",
+                "outcome_code": "CART_EMPTY",
                 "outcome_message": "No employee matched that name.",
                 "is_error": False,
-                "return_value": {"job_title": None, "sub_unit": None},
+                "return_value": {"item_name": None, "item_price": None},
             }
         ],
         "error_map": {
@@ -203,11 +203,11 @@ async def run_replay(
 
 async def test_success_path_returns_outputs():
     result, run_log = await run_replay(
-        build_artifact(), {"employee_name": "Peter Anderson"}
+        build_artifact(), {"product_name": "Sauce Labs Backpack"}
     )
 
     assert result.result_type is ResultType.SUCCESS
-    assert result.outputs == {"job_title": "Senior Engineer", "sub_unit": "Engineering"}
+    assert result.outputs == {"item_name": "Sauce Labs Backpack", "item_price": "$29.99"}
     assert result.steps_completed == result.total_steps
     assert run_log.to_dict()["result_type"] == "success"
 
@@ -215,21 +215,21 @@ async def test_success_path_returns_outputs():
 async def test_not_found_is_a_business_outcome_not_a_crash():
     """The distinction the whole error model exists for."""
     result, run_log = await run_replay(
-        build_artifact(), {"employee_name": "Nobody At All"}
+        build_artifact(), {"product_name": "Nobody At All"}
     )
 
     assert result.result_type is ResultType.BUSINESS_OUTCOME
-    assert result.outcome_code == "EMPLOYEE_NOT_FOUND"
+    assert result.outcome_code == "CART_EMPTY"
     assert result.is_error is False
     # Shape matches output_schema even though nothing was found.
-    assert result.outputs == {"job_title": None, "sub_unit": None}
+    assert result.outputs == {"item_name": None, "item_price": None}
     assert run_log.to_dict()["outcome"]["is_error"] is False
 
 
 async def test_business_outcome_is_checked_before_failure_handling():
     """If ordering were reversed, the post-condition would fail first and the
     outcome would be reported as a crash."""
-    result, _ = await run_replay(build_artifact(), {"employee_name": "Nobody"})
+    result, _ = await run_replay(build_artifact(), {"product_name": "Nobody"})
     assert result.result_type is not ResultType.FAILURE
 
 
@@ -237,7 +237,7 @@ async def test_broken_locator_produces_a_structured_failure():
     artifact = build_artifact()
     artifact.steps[2].locators.primary.methods[0].name = "Nonexistent Button"
 
-    result, run_log = await run_replay(artifact, {"employee_name": "Peter Anderson"})
+    result, run_log = await run_replay(artifact, {"product_name": "Sauce Labs Backpack"})
 
     assert result.result_type is ResultType.FAILURE
     assert result.failure["failed_at_step"] == 3
@@ -253,9 +253,9 @@ async def test_empty_required_extraction_is_a_hard_failure():
     pages["/mock/search"] = fake_app.SEARCH_EMPTY_CELLS
 
     artifact = build_artifact()
-    # The empty-cell page has no "Senior Engineer" text to locate at all.
+    # The empty-cell page has no "Sauce Labs Bike Light" text to locate at all.
     result, _ = await run_replay(
-        artifact, {"employee_name": "Peter Anderson"}, pages=pages
+        artifact, {"product_name": "Sauce Labs Backpack"}, pages=pages
     )
     assert result.result_type is ResultType.FAILURE
     assert result.failure["failed_at_step"] == 4
@@ -269,7 +269,7 @@ async def test_empty_required_extraction_is_a_hard_failure():
 async def test_strict_mode_makes_zero_model_calls():
     """The claim the evidence file has to support."""
     result, run_log = await run_replay(
-        build_artifact(), {"employee_name": "Peter Anderson"}
+        build_artifact(), {"product_name": "Sauce Labs Backpack"}
     )
     assert result.llm_calls == 0
     assert result.layer2_used is False
@@ -286,7 +286,7 @@ async def test_strict_mode_holds_no_model_client_even_if_one_is_offered():
     sentinel = object()
     preflight = preflight_replay(
         artifact,
-        {"employee_name": "x"},
+        {"product_name": "x"},
         allowlist=Allowlist.load(),
         mode=ReplayMode.STRICT,
     )
@@ -300,15 +300,15 @@ async def test_strict_mode_holds_no_model_client_even_if_one_is_offered():
 
 async def test_repeated_runs_produce_identical_outputs():
     """Determinism is the point; two runs of the same artifact must agree."""
-    first, _ = await run_replay(build_artifact(), {"employee_name": "Peter Anderson"})
-    second, _ = await run_replay(build_artifact(), {"employee_name": "Peter Anderson"})
+    first, _ = await run_replay(build_artifact(), {"product_name": "Sauce Labs Backpack"})
+    second, _ = await run_replay(build_artifact(), {"product_name": "Sauce Labs Backpack"})
     assert first.outputs == second.outputs
     assert first.result_type is second.result_type
 
 
 async def test_parameters_flow_through_to_the_page():
     """A different input must reach the app, not a baked-in recorded value."""
-    result, _ = await run_replay(build_artifact(), {"employee_name": "Someone Else"})
+    result, _ = await run_replay(build_artifact(), {"product_name": "Someone Else"})
     assert result.result_type is ResultType.BUSINESS_OUTCOME
 
 
@@ -321,7 +321,7 @@ async def test_risky_step_without_a_handler_refuses_to_execute():
     artifact = build_artifact()
     artifact.steps[2].risk_level = artifact.steps[2].risk_level.__class__("critical")
 
-    result, _ = await run_replay(artifact, {"employee_name": "Peter Anderson"})
+    result, _ = await run_replay(artifact, {"product_name": "Sauce Labs Backpack"})
 
     assert result.result_type is ResultType.FAILURE
     assert "authorisation" in result.failure["expected"]
@@ -340,7 +340,7 @@ async def test_risky_step_proceeds_after_authorisation():
     artifact.steps[2].risk_level = artifact.steps[2].risk_level.__class__("high")
 
     result, _ = await run_replay(
-        artifact, {"employee_name": "Peter Anderson"}, escalate=approve
+        artifact, {"product_name": "Sauce Labs Backpack"}, escalate=approve
     )
 
     assert len(approvals) == 1
@@ -355,7 +355,7 @@ async def test_risky_step_proceeds_after_authorisation():
 
 
 async def test_run_log_records_the_layer_used_per_step():
-    _, run_log = await run_replay(build_artifact(), {"employee_name": "Peter Anderson"})
+    _, run_log = await run_replay(build_artifact(), {"product_name": "Sauce Labs Backpack"})
     steps = run_log.to_dict()["steps"]
 
     by_id = {s["step_id"]: s for s in steps}
@@ -373,7 +373,7 @@ async def test_failure_captures_evidence(tmp_path, monkeypatch):
 
     artifact = build_artifact()
     artifact.steps[2].locators.primary.methods[0].name = "Nope"
-    result, _ = await run_replay(artifact, {"employee_name": "Peter Anderson"})
+    result, _ = await run_replay(artifact, {"product_name": "Sauce Labs Backpack"})
 
     assert result.result_type is ResultType.FAILURE
     assert result.evidence.get("screenshot")
@@ -381,7 +381,7 @@ async def test_failure_captures_evidence(tmp_path, monkeypatch):
 
 
 async def test_evidence_log_is_json_serialisable(tmp_path):
-    _, run_log = await run_replay(build_artifact(), {"employee_name": "Peter Anderson"})
+    _, run_log = await run_replay(build_artifact(), {"product_name": "Sauce Labs Backpack"})
     path = run_log.write(tmp_path / "run.json")
     data = json.loads(path.read_text(encoding="utf-8"))
     assert data["capability_id"] == "lookup_employee"

@@ -40,19 +40,19 @@ from tests.test_browser import needs_chromium
 
 def test_template_reference_is_not_a_violation():
     """`{{param}}` is the *correct* way to depend on an input."""
-    assert not embeds("{{employee_name}}", "Peter Anderson")
+    assert not embeds("{{product_name}}", "Sauce Labs Backpack")
     assert not embeds("Edit {{product_name}}", "Widget")
 
 
 def test_literal_value_is_a_violation():
-    assert embeds("Peter Mac Anderson", "Peter Anderson")
+    assert embeds("Sauce Labs Backpack (Black)", "Sauce Labs Backpack")
     assert embeds("$29.99", "$29.99")
 
 
 def test_substring_either_direction_counts():
     # Locator narrower than the value, and wider than it.
-    assert embeds("Anderson", "Peter Anderson")
-    assert embeds("Peter Anderson Profile", "Peter Anderson")
+    assert embeds("Backpack", "Sauce Labs Backpack")
+    assert embeds("Sauce Labs Backpack - details", "Sauce Labs Backpack")
 
 
 def test_short_values_are_ignored():
@@ -81,27 +81,27 @@ def _artifact(artifact_dict: dict[str, Any]) -> Artifact:
 
 
 def test_checkpoint_naming_this_runs_result_is_caught(artifact_dict):
-    """Bug 1: `page_contains_text: "Anderson"` after a search."""
+    """Bug 1: `page_contains_text: "Backpack"` after a search."""
     step = artifact_dict["steps"][6]
     step["post_condition"] = {
         "condition": "page_contains_text",
-        "value": "Anderson",
+        "value": "Backpack",
         "on_fail": "retry",
     }
     violations = check_reusable(
-        _artifact(artifact_dict), {"employee_name": "Peter Anderson"}
+        _artifact(artifact_dict), {"product_name": "Sauce Labs Backpack"}
     )
     assert violations
     assert "checkpoint" in violations[0].where
 
 
 def test_click_locator_naming_this_runs_record_is_caught(artifact_dict):
-    """Bug 2: `option "Peter Mac Anderson"` for a typeahead suggestion."""
+    """Bug 2: `option "Sauce Labs Backpack (Black)"` for a typeahead suggestion."""
     artifact_dict["steps"][6]["locators"]["primary"]["methods"] = [
-        {"method": "get_by_role", "role": "option", "name": "Peter Mac Anderson"}
+        {"method": "get_by_role", "role": "option", "name": "Sauce Labs Backpack (Black)"}
     ]
     violations = check_reusable(
-        _artifact(artifact_dict), {"employee_name": "Peter Anderson"}
+        _artifact(artifact_dict), {"product_name": "Sauce Labs Backpack"}
     )
     assert violations
     assert "locator" in violations[0].where
@@ -116,10 +116,10 @@ def test_extraction_located_by_its_own_value_is_caught(artifact_dict):
     """
     extraction = artifact_dict["steps"][7]["extractions"][0]
     extraction["locators"]["primary"]["methods"] = [
-        {"method": "get_by_text", "value": "Senior Engineer"}
+        {"method": "get_by_text", "value": "Sauce Labs Bike Light"}
     ]
     violations = check_reusable(
-        _artifact(artifact_dict), {"job_title": "Senior Engineer"}
+        _artifact(artifact_dict), {"item_name": "Sauce Labs Bike Light"}
     )
     assert violations
     assert "extraction" in violations[0].where
@@ -128,7 +128,7 @@ def test_extraction_located_by_its_own_value_is_caught(artifact_dict):
 def test_a_clean_artifact_has_no_violations(artifact_dict):
     artifact = _artifact(artifact_dict)
     assert (
-        check_reusable(artifact, {"employee_name": "Someone Not On This Page"}) == []
+        check_reusable(artifact, {"product_name": "Nothing On This Page"}) == []
     )
 
 
@@ -151,11 +151,11 @@ def test_credentials_are_never_echoed_into_a_violation(artifact_dict):
 def test_assert_reusable_raises_with_actionable_guidance(artifact_dict):
     artifact_dict["steps"][6]["post_condition"] = {
         "condition": "page_contains_text",
-        "value": "Anderson",
+        "value": "Backpack",
         "on_fail": "retry",
     }
     with pytest.raises(NotReusable) as exc:
-        assert_reusable(_artifact(artifact_dict), {"name": "Peter Anderson"})
+        assert_reusable(_artifact(artifact_dict), {"name": "Sauce Labs Backpack"})
     message = str(exc.value)
     assert "only work for the input it was recorded with" in message
     assert "{{parameter}}" in message

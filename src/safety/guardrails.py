@@ -60,9 +60,9 @@ class Allowlist:
         """Raise unless the scheme and host of *url* are permitted.
 
         Route patterns are deliberately *not* applied. An artifact's
-        ``target.url`` identifies the application ("this capability is for
-        OrangeHRM") and is usually a bare origin; requiring it to match a route
-        pattern would reject every legitimate artifact. Actual navigation is
+        ``target.url`` identifies the application and is usually a bare origin;
+        requiring it to match a route pattern would reject every legitimate
+        artifact. Actual navigation is
         checked by :meth:`check_url`.
         """
         parsed = urlparse(url)

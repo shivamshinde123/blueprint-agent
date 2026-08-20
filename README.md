@@ -17,11 +17,13 @@ is the design write-up.
 
 ## Status
 
-**The framework is complete.** 305 tests passing, lint clean.
+**Working end to end**, against [saucedemo.com](https://www.saucedemo.com).
+346 tests passing, lint clean.
 
 | Component | State |
 |---|---|
 | Artifact schema + cross-reference validation | ✅ |
+| Reusability enforced (no run data in locators or checkpoints) | ✅ |
 | Safety: allowlist, risk gating, redaction | ✅ |
 | Pinned browser sessions | ✅ |
 | Discovery agent (observe → decide → act) | ✅ |
@@ -30,10 +32,11 @@ is the design write-up.
 | Multi-tenant overrides | ✅ |
 | Local zero-ARIA legacy surface | ✅ |
 | CLI: `discover` / `replay` / `validate` / `merge` | ✅ |
-| Evidence runs against the real target apps | ⏳ pending target flows |
+| Real discovery + strict replay, with evidence | ✅ |
+| `REPORT.md` design write-up | 🔲 outstanding |
 
 See [`PLAN.md` §13](PLAN.md) for the full work breakdown, and
-[`PLAN.md` §11](PLAN.md) for the 20 corrections made to the original design.
+[`PLAN.md` §11](PLAN.md) for the corrections made to the original design.
 
 ---
 
@@ -56,8 +59,7 @@ cp .env.example .env             # then fill in the values
 | Variable | Required | Notes |
 |---|---|---|
 | `OPENROUTER_API_KEY` | for `discover` | <https://openrouter.ai/keys>. Not needed for `replay --mode strict` or `validate` |
-| `ORANGEHRM_USERNAME` / `ORANGEHRM_PASSWORD` | for the modern-web demo | Public demo: `Admin` / `admin123` |
-| `GURU99_USERNAME` / `GURU99_PASSWORD` | for the legacy demo | Request at <https://www.demo.guru99.com/> → *Demo Login*; these expire |
+| `SAUCEDEMO_USERNAME` / `SAUCEDEMO_PASSWORD` | for the demo flows | Public demo; the credentials are printed on the login page itself |
 | `BLUEPRINT_MODEL` | no | Defaults to `anthropic/claude-sonnet-5` |
 | `BLUEPRINT_PROVIDERS` | no | Pinned upstream routing, default `anthropic`. Empty string lets the gateway choose |
 
@@ -111,14 +113,15 @@ offset — merged over the shared base flow with no re-recording.
 
 ```bash
 uv run python main.py discover \
-  --goal "Search for employee Peter Anderson and get their job title and sub unit" \
-  --url  "https://opensource-demo.orangehrmlive.com" \
-  --capability lookup_employee_profile \
-  --credentials ORANGEHRM \
-  --output artifacts/lookup_employee_profile_v1.0.0.json
+  --goal "Log in to the store, open the product with the given name, and get its price and description." \
+  --url  "https://www.saucedemo.com" \
+  --capability lookup_product_price \
+  --credentials SAUCEDEMO \
+  --params '{"product_name": "Sauce Labs Backpack"}' \
+  --output artifacts/lookup_product_price_v1.0.0.json
 ```
 
-`--credentials ORANGEHRM` reads the username and password from `.env`, so they
+`--credentials SAUCEDEMO` reads the username and password from `.env`, so they
 never appear on the command line — where they would land in shell history and
 the process list, out of redaction's reach.
 
@@ -126,10 +129,19 @@ the process list, out of redaction's reach.
 
 ```bash
 uv run python main.py replay \
-  --artifact artifacts/lookup_employee_profile_v1.0.0.json \
-  --params '{"employee_name": "Peter Anderson"}' \
-  --credentials ORANGEHRM \
+  --artifact artifacts/lookup_product_price_v1.0.0.json \
+  --params '{"product_name": "Sauce Labs Bike Light"}' \
+  --credentials SAUCEDEMO \
   --mode strict
+```
+
+Note the product differs from the one it was recorded with, and it still
+returns the right answer — that is the point of the artifact, and there is a
+committed evidence log for each:
+
+```
+recorded with  "Sauce Labs Backpack"   -> $29.99   6/6 steps, 0 model calls
+replayed with  "Sauce Labs Bike Light" -> $9.99    6/6 steps, 0 model calls
 ```
 
 `--mode strict` makes **zero** model calls — in strict mode the engine is not

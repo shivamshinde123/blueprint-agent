@@ -25,7 +25,7 @@ from src.safety.redaction import REDACTED
 PARAMS = {
     "auth_username": "Admin",
     "auth_password": "hunter2-very-secret",
-    "employee_name": "Peter Anderson",
+    "product_name": "Sauce Labs Backpack",
 }
 
 
@@ -54,7 +54,7 @@ def test_run_id_is_unique_and_prefixed():
 
 def test_params_are_redacted_at_construction(run):
     assert run.params["auth_password"] == REDACTED
-    assert run.params["employee_name"] == "Peter Anderson"
+    assert run.params["product_name"] == "Sauce Labs Backpack"
 
 
 def test_step_log_for_prefills_from_the_artifact(artifact):
@@ -72,7 +72,7 @@ def test_step_log_for_prefills_from_the_artifact(artifact):
 def test_strict_run_reports_zero_llm_calls(run, artifact):
     for step in artifact.steps:
         run.record_step(step_log_for(step, layer_used="accessibility_tree"))
-    run.finish_success({"job_title": "Engineer", "sub_unit": "Engineering"})
+    run.finish_success({"item_name": "Engineer", "item_price": "Engineering"})
 
     data = run.to_dict()
     assert data["llm_calls_made"] == 0
@@ -114,9 +114,9 @@ def test_navigate_steps_record_no_layer(run, artifact):
 
 def test_business_outcome_is_not_an_error(run):
     run.finish_business_outcome(
-        "EMPLOYEE_NOT_FOUND",
+        "CART_EMPTY",
         "No employee matched the supplied name.",
-        {"job_title": None, "sub_unit": None},
+        {"item_name": None, "item_price": None},
     )
     data = run.to_dict()
     assert data["result_type"] == "business_outcome"
@@ -172,7 +172,7 @@ def test_no_secret_reaches_the_written_file(run, artifact, tmp_path):
 
 
 def test_outputs_are_redacted(run):
-    run.finish_success({"job_title": f"leaked {PARAMS['auth_password']}", "sub_unit": "X"})
+    run.finish_success({"item_name": f"leaked {PARAMS['auth_password']}", "item_price": "X"})
     assert PARAMS["auth_password"] not in json.dumps(run.to_dict())
 
 

@@ -98,7 +98,7 @@ def test_business_outcome_referencing_missing_step_is_rejected(artifact_dict):
 
 def test_business_outcome_return_value_must_match_output_schema(artifact_dict):
     """Callers must always receive the same shape, whatever the result type."""
-    artifact_dict["business_outcomes"][0]["return_value"] = {"job_title": None}
+    artifact_dict["business_outcomes"][0]["return_value"] = {"item_name": None}
     assert "do not match output_schema" in expect_rejected(artifact_dict)
 
 
@@ -139,18 +139,18 @@ def test_duplicate_output_key_is_rejected(artifact_dict):
 def test_undeclared_template_parameter_is_rejected(artifact_dict):
     """`{{member_id}}` with no matching input parameter would substitute to
     nothing at replay time and type the literal braces into the field."""
-    step_by_id(artifact_dict, 6)["value"] = "{{member_id}}"
+    step_by_id(artifact_dict, 2)["value"] = "{{member_id}}"
     assert "undeclared parameters" in expect_rejected(artifact_dict)
 
 
 def test_template_in_locator_name_is_resolved(artifact_dict):
-    """Dynamic labels like "Account {{employee_name}} - Edit" are legal, as
+    """Dynamic labels like "Account {{product_name}} - Edit" are legal, as
     long as the parameter is declared."""
     step_by_id(artifact_dict, 7)["locators"]["primary"]["methods"] = [
-        {"method": "get_by_role", "role": "link", "name": "Edit {{employee_name}}"}
+        {"method": "get_by_role", "role": "link", "name": "Edit {{product_name}}"}
     ]
     artifact = Artifact.model_validate(artifact_dict)
-    assert "employee_name" in artifact.step_by_id(7).referenced_params
+    assert "product_name" in artifact.step_by_id(7).referenced_params
 
 
 def test_undeclared_parameter_in_locator_is_rejected(artifact_dict):
@@ -173,7 +173,7 @@ def test_session_recovery_templates_are_checked(artifact_dict):
 def test_outcomes_for_step_filters_correctly(artifact_dict):
     artifact = Artifact.model_validate(artifact_dict)
     assert [o.outcome_code for o in artifact.outcomes_for_step(4)] == ["AUTH_FAILED"]
-    assert [o.outcome_code for o in artifact.outcomes_for_step(8)] == ["EMPLOYEE_NOT_FOUND"]
+    assert [o.outcome_code for o in artifact.outcomes_for_step(8)] == ["CART_EMPTY"]
     assert artifact.outcomes_for_step(1) == []
 
 

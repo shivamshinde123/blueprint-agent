@@ -111,7 +111,7 @@ def llm_api_key() -> str | None:
 
 
 def credentials(prefix: str) -> dict[str, str | None]:
-    """Return ``{username, password}`` for a target app prefix, e.g. ``ORANGEHRM``."""
+    """Return ``{username, password}`` for a target app prefix, e.g. ``SAUCEDEMO``."""
     return {
         "username": os.getenv(f"{prefix}_USERNAME"),
         "password": os.getenv(f"{prefix}_PASSWORD"),

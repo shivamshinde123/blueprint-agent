@@ -232,7 +232,7 @@ async def test_replay_wires_escalation_and_records_it(monkeypatch):
     resumer = asyncio.create_task(resume_shortly())
     result, run_log = await replay(
         artifact,
-        {"employee_name": "Peter Anderson"},
+        {"product_name": "Sauce Labs Backpack"},
         mode=ReplayMode.STRICT,
         allowlist=Allowlist.load(),
         enable_escalation=True,

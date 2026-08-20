@@ -30,10 +30,10 @@ def base(golden_raw) -> dict:
 
 
 def test_scalar_override(base):
-    out = apply_overrides(base, {"target.url": "https://banka.example.com"})
-    assert out["target"]["url"] == "https://banka.example.com"
+    out = apply_overrides(base, {"target.url": "https://bank-a.example.com"})
+    assert out["target"]["url"] == "https://bank-a.example.com"
     # The base is not mutated.
-    assert base["target"]["url"] != "https://banka.example.com"
+    assert base["target"]["url"] != "https://bank-a.example.com"
 
 
 def test_indexed_override(base):
@@ -43,9 +43,9 @@ def test_indexed_override(base):
 
 def test_deep_indexed_override(base):
     out = apply_overrides(
-        base, {"steps[6].locators.primary.methods[0].name": "Find"}
+        base, {"steps[6].locators.primary.methods[0].name": "Basket"}
     )
-    assert out["steps"][6]["locators"]["primary"]["methods"][0]["name"] == "Find"
+    assert out["steps"][6]["locators"]["primary"]["methods"][0]["name"] == "Basket"
 
 
 def test_coordinate_nudge(base):
@@ -87,13 +87,13 @@ def test_several_overrides_apply_together(base):
     out = apply_overrides(
         base,
         {
-            "target.url": "https://banka.example.com",
-            "steps[0].url": "https://banka.example.com/login",
+            "target.url": "https://bank-a.example.com",
+            "steps[0].url": "https://bank-a.example.com/login",
             "version": "1.0.1",
         },
     )
-    assert out["target"]["url"] == "https://banka.example.com"
-    assert out["steps"][0]["url"] == "https://banka.example.com/login"
+    assert out["target"]["url"] == "https://bank-a.example.com"
+    assert out["steps"][0]["url"] == "https://bank-a.example.com/login"
     assert out["version"] == "1.0.1"
 
 
@@ -171,13 +171,13 @@ def test_shipped_override_merges_and_validates():
     artifact, override = merge(GOLDEN_ARTIFACT, TENANT_FILE)
 
     assert override.tenant_id == "bank_a"
-    assert artifact.target.url == "https://banka.orangehrm.example.com"
-    assert artifact.steps[6].locators.primary.methods[0].name == "Find"
+    assert artifact.target.url == "https://bank-a.saucedemo.example.com"
+    assert artifact.steps[6].locators.primary.methods[0].name == "Basket"
     assert artifact.steps[6].locators.fallback.coordinates.y == 512
     assert any(i.name == "bank_a_welcome_banner" for i in artifact.known_interstitials)
     # Everything not overridden is inherited unchanged.
     assert len(artifact.steps) == 8
-    assert artifact.business_outcomes[0].outcome_code == "EMPLOYEE_NOT_FOUND"
+    assert artifact.business_outcomes[0].outcome_code == "CART_EMPTY"
 
 
 def test_tenant_appears_in_the_capability_id():

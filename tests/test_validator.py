@@ -28,7 +28,7 @@ from tests.conftest import GOLDEN_ARTIFACT
 GOOD_PARAMS = {
     "auth_username": "Admin",
     "auth_password": "admin123",
-    "employee_name": "Peter Anderson",
+    "product_name": "Sauce Labs Backpack",
 }
 
 
@@ -43,8 +43,8 @@ def allowlist(tmp_path) -> Allowlist:
     path.write_text(
         json.dumps(
             {
-                "permitted_domains": ["opensource-demo.orangehrmlive.com"],
-                "permitted_url_patterns": ["/web/index.php/"],
+                "permitted_domains": ["www.saucedemo.com"],
+                "permitted_url_patterns": ["/inventory"],
                 "permitted_actions": ["click", "fill", "navigate", "extract"],
                 "blocked_actions": ["upload", "download"],
             }
@@ -61,7 +61,7 @@ def allowlist(tmp_path) -> Allowlist:
 
 def test_load_golden_artifact():
     artifact = load_artifact(GOLDEN_ARTIFACT)
-    assert artifact.capability_id == "lookup_employee_profile"
+    assert artifact.capability_id == "add_product_to_cart"
 
 
 def test_missing_file_is_reported_clearly(tmp_path):
@@ -94,14 +94,14 @@ def test_valid_params_pass(artifact):
 
 
 def test_missing_required_param_is_named(artifact):
-    params = {k: v for k, v in GOOD_PARAMS.items() if k != "employee_name"}
-    with pytest.raises(MissingParameters, match="employee_name"):
+    params = {k: v for k, v in GOOD_PARAMS.items() if k != "product_name"}
+    with pytest.raises(MissingParameters, match="product_name"):
         check_parameters(artifact, params)
 
 
 def test_empty_string_counts_as_missing(artifact):
-    with pytest.raises(MissingParameters, match="employee_name"):
-        check_parameters(artifact, {**GOOD_PARAMS, "employee_name": ""})
+    with pytest.raises(MissingParameters, match="product_name"):
+        check_parameters(artifact, {**GOOD_PARAMS, "product_name": ""})
 
 
 def test_unknown_param_is_refused_not_ignored(artifact):
@@ -112,16 +112,16 @@ def test_unknown_param_is_refused_not_ignored(artifact):
 
 def test_wrong_type_is_refused(artifact):
     with pytest.raises(MissingParameters, match="wrong type"):
-        check_parameters(artifact, {**GOOD_PARAMS, "employee_name": 12345})
+        check_parameters(artifact, {**GOOD_PARAMS, "product_name": 12345})
 
 
 def test_boolean_is_not_accepted_as_integer(artifact_dict):
     """bool subclasses int in Python; the declared types should not blur."""
-    artifact_dict["input_parameters"]["employee_name"]["type"] = "integer"
+    artifact_dict["input_parameters"]["product_name"]["type"] = "integer"
     artifact = Artifact.model_validate(artifact_dict)
     with pytest.raises(MissingParameters, match="wrong type"):
-        check_parameters(artifact, {**GOOD_PARAMS, "employee_name": True})
-    check_parameters(artifact, {**GOOD_PARAMS, "employee_name": 42})
+        check_parameters(artifact, {**GOOD_PARAMS, "product_name": True})
+    check_parameters(artifact, {**GOOD_PARAMS, "product_name": 42})
 
 
 # --------------------------------------------------------------------------
@@ -214,7 +214,7 @@ def test_preflight_returns_a_summary(artifact, allowlist):
     assert result.risky_steps == []
     assert result.fragile_steps == []
     assert result.redacted_params["auth_password"] == "***REDACTED***"
-    assert result.redacted_params["employee_name"] == "Peter Anderson"
+    assert result.redacted_params["product_name"] == "Sauce Labs Backpack"
 
 
 def test_preflight_mode_override(artifact, allowlist):

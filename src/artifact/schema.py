@@ -119,9 +119,9 @@ class AccessibilityMethod(str, Enum):
     #:
     #: Last resort, and the one that rescues real applications. A caption is
     #: only reachable by ``get_by_label`` when the markup actually wires it to
-    #: its control, and plenty of apps never do: OrangeHRM renders a visible
-    #: "Date of Birth" label whose input has no accessible name at all, so
-    #: every other method returns nothing while a human reads it instantly.
+    #: its control, and plenty of apps never do -- rendering a visible "Date
+    #: of Birth" caption whose input has no accessible name at all, so every
+    #: other method returns nothing while a human reads it instantly.
     #:
     #: Still identity-based rather than positional -- it keys on the visible
     #: caption, which is what a person reads and what survives a redesign far
@@ -312,9 +312,9 @@ class AccessibilityLocatorMethod(Base):
     value: str | None = None
     #: Which match to take when the name is genuinely ambiguous.
     #:
-    #: Real pages repeat labels: OrangeHRM's PIM search exposes *two* inputs
-    #: placeholdered "Type for hints..." (Employee Name and Supervisor Name),
-    #: both visible. Leaving that unresolved means either refusing the step or
+    #: Real pages repeat labels: a search form will expose *two* inputs sharing
+    #: one placeholder -- an entity name and a supervisor name, say -- both
+    #: visible. Leaving that unresolved means either refusing the step or
     #: silently guessing on every replay. Recording the index makes the choice
     #: explicit, reviewable, and identical on every run.
     nth: int | None = None

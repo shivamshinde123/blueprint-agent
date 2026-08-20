@@ -31,7 +31,7 @@ def expect_rejected(data: dict[str, Any], *, because: str) -> str:
 
 def test_golden_artifact_is_valid(artifact_dict):
     artifact = Artifact.model_validate(artifact_dict)
-    assert artifact.capability_id == "lookup_employee_profile"
+    assert artifact.capability_id == "add_product_to_cart"
     assert len(artifact.steps) == 8
 
 
@@ -82,7 +82,7 @@ def test_sensitive_rejects_non_boolean(artifact_dict, truthy):
 
 def test_sensitive_accepts_real_booleans(artifact_dict):
     artifact_dict["input_parameters"]["auth_password"]["sensitive"] = True
-    artifact_dict["input_parameters"]["employee_name"]["sensitive"] = False
+    artifact_dict["input_parameters"]["product_name"]["sensitive"] = False
     artifact = Artifact.model_validate(artifact_dict)
     assert artifact.sensitive_parameters() == {"auth_username", "auth_password"}
 
@@ -230,7 +230,7 @@ def test_get_by_role_requires_role_and_name(artifact_dict):
 def test_role_without_name_is_allowed_with_an_explicit_index(artifact_dict):
     """Position is a legitimate choice when the name is this run's data.
 
-    A typeahead suggestion reads "Peter Mac Anderson" for one employee and
+    A typeahead suggestion reads "Sauce Labs Backpack (Black)" for one employee and
     something else for the next, so naming it records a capability that works
     exactly once. `role + nth` -- the first option in the list -- stays correct
     for every input, and is an explicit recorded decision rather than an
@@ -362,7 +362,7 @@ def test_outcome_code_must_be_screaming_snake(artifact_dict, bad):
 
 
 def test_business_outcome_cannot_be_an_error(artifact_dict):
-    """"No Records Found" is an answer, not a crash."""
+    """"Your cart is empty" is an answer, not a crash."""
     artifact_dict["business_outcomes"][0]["is_error"] = True
     assert "is_error" in expect_rejected(artifact_dict, because="is_error true")
 

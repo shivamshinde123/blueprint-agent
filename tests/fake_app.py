@@ -40,14 +40,14 @@ SEARCH = """
     function go() {
       var q = document.getElementById('q').value.trim();
       var out = document.getElementById('out');
-      if (q === 'Peter Anderson') {
+      if (q === 'Sauce Labs Backpack') {
         out.innerHTML =
           '<h2>Records Found</h2>' +
-          '<table><tr><td>Job Title</td><td id="jt">Senior Engineer</td></tr>' +
-          '<tr><td>Sub Unit</td><td id="su">Engineering</td></tr>' +
+          '<table><tr><td>Item Name</td><td id="jt">Sauce Labs Backpack</td></tr>' +
+          '<tr><td>Item Price</td><td id="su">$29.99</td></tr>' +
           '<tr><td>Balance</td><td id="bal">$12,480.55</td></tr></table>';
       } else {
-        out.innerHTML = '<h2>No Records Found</h2>';
+        out.innerHTML = '<h2>Your cart is empty</h2>';
       }
     }
   </script>
@@ -56,7 +56,7 @@ SEARCH = """
 
 #: A page where the results row renders but the value cells are empty --
 #: exercises the extraction-empty hard failure.
-SEARCH_EMPTY_CELLS = SEARCH.replace('id="jt">Senior Engineer<', 'id="jt"><')
+SEARCH_EMPTY_CELLS = SEARCH.replace('id="jt">Sauce Labs Backpack<', 'id="jt"><')
 
 PAGES = {
     "/mock/": LOGIN,

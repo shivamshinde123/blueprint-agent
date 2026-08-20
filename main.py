@@ -311,7 +311,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     discover.add_argument(
         "--credentials",
-        help="env prefix to read credentials from, e.g. ORANGEHRM or GURU99",
+        help="env prefix to read credentials from, e.g. SAUCEDEMO",
     )
     discover.add_argument(
         "--model", default=MODEL_SLUG, help=f"gateway model slug (default: {MODEL_SLUG})"
@@ -329,7 +329,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     replay.add_argument(
         "--credentials",
-        help="env prefix to read credentials from, e.g. ORANGEHRM or GURU99",
+        help="env prefix to read credentials from, e.g. SAUCEDEMO",
     )
     replay.add_argument(
         "--mode",

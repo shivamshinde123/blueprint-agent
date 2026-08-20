@@ -25,7 +25,7 @@ from src.safety.redaction import REDACTED, Redactor, redact_params
 PARAMS = {
     "auth_username": "Admin",
     "auth_password": "sup3rs3cr3t-pa55",
-    "employee_name": "Peter Anderson",
+    "product_name": "Sauce Labs Backpack",
 }
 
 
@@ -40,8 +40,8 @@ def allowlist(tmp_path) -> Allowlist:
     path.write_text(
         json.dumps(
             {
-                "permitted_domains": ["opensource-demo.orangehrmlive.com", "localhost"],
-                "permitted_url_patterns": ["/web/index.php/auth/", "/web/index.php/pim/"],
+                "permitted_domains": ["www.saucedemo.com", "localhost"],
+                "permitted_url_patterns": ["/inventory", "/cart"],
                 "permitted_actions": ["click", "fill", "navigate", "extract"],
                 "blocked_actions": ["upload", "download", "execute_script"],
             }
@@ -57,23 +57,23 @@ def allowlist(tmp_path) -> Allowlist:
 
 
 def test_permitted_url_passes(allowlist):
-    allowlist.check_url("https://opensource-demo.orangehrmlive.com/web/index.php/auth/login")
+    allowlist.check_url("https://www.saucedemo.com/inventory.html")
 
 
 def test_off_domain_navigation_is_blocked(allowlist):
     with pytest.raises(BlockedByAllowlist, match="not in the allowlist"):
-        allowlist.check_url("https://evil.example.com/web/index.php/auth/login")
+        allowlist.check_url("https://evil.example.com/inventory.html")
 
 
 def test_permitted_domain_but_forbidden_route_is_blocked(allowlist):
     with pytest.raises(BlockedByAllowlist, match="no permitted route"):
-        allowlist.check_url("https://opensource-demo.orangehrmlive.com/admin/deleteAll")
+        allowlist.check_url("https://www.saucedemo.com/admin/deleteAll")
 
 
 def test_application_root_is_permitted(allowlist):
     """Every flow opens the app's front door; it is not a route violation."""
-    allowlist.check_url("https://opensource-demo.orangehrmlive.com/")
-    allowlist.check_url("https://opensource-demo.orangehrmlive.com")
+    allowlist.check_url("https://www.saucedemo.com/")
+    allowlist.check_url("https://www.saucedemo.com")
 
 
 def test_root_is_still_domain_checked(allowlist):
@@ -90,9 +90,9 @@ def test_file_scheme_is_blocked(allowlist):
 @pytest.mark.parametrize(
     "sneaky",
     [
-        "https://evil.com/?next=opensource-demo.orangehrmlive.com/web/index.php/auth/",
-        "https://opensource-demo.orangehrmlive.com.evil.com/web/index.php/auth/",
-        "https://user@evil.com/web/index.php/auth/",
+        "https://evil.com/?next=www.saucedemo.com/inventory",
+        "https://www.saucedemo.com.evil.com/inventory",
+        "https://user@evil.com/inventory",
     ],
 )
 def test_lookalike_hosts_are_blocked(allowlist, sneaky):
@@ -103,7 +103,7 @@ def test_lookalike_hosts_are_blocked(allowlist, sneaky):
 
 def test_subdomain_is_not_implicitly_permitted(allowlist):
     with pytest.raises(BlockedByAllowlist):
-        allowlist.check_url("https://staging.opensource-demo.orangehrmlive.com/web/index.php/pim/")
+        allowlist.check_url("https://staging.saucedemo.com/cart")
 
 
 def test_missing_allowlist_file_refuses_rather_than_permitting(tmp_path):
@@ -144,9 +144,9 @@ def test_target_origin_is_checked_without_route_patterns(allowlist):
     accepts it on domain alone, while `check_url` — used for real navigation —
     still enforces the permitted routes.
     """
-    allowlist.check_origin("https://opensource-demo.orangehrmlive.com/admin/portal")
+    allowlist.check_origin("https://www.saucedemo.com/admin/portal")
     with pytest.raises(BlockedByAllowlist, match="no permitted route"):
-        allowlist.check_url("https://opensource-demo.orangehrmlive.com/admin/portal")
+        allowlist.check_url("https://www.saucedemo.com/admin/portal")
 
 
 def test_origin_check_still_enforces_domain_and_scheme(allowlist):
@@ -205,7 +205,7 @@ def test_sensitive_params_are_redacted(artifact):
     out = redact_params(artifact, PARAMS)
     assert out["auth_username"] == REDACTED
     assert out["auth_password"] == REDACTED
-    assert out["employee_name"] == "Peter Anderson"  # not sensitive
+    assert out["product_name"] == "Sauce Labs Backpack"  # not sensitive
 
 
 def test_literal_secret_is_scrubbed_from_text(artifact):
@@ -225,7 +225,7 @@ def test_sensitive_template_is_scrubbed(artifact):
 
 def test_non_sensitive_template_survives(artifact):
     redactor = Redactor(artifact, PARAMS)
-    assert redactor.text("value={{employee_name}}") == "value={{employee_name}}"
+    assert redactor.text("value={{product_name}}") == "value={{product_name}}"
 
 
 def test_step_dump_is_redacted(artifact):
@@ -288,6 +288,6 @@ def test_redact_text_handles_empty_input(artifact):
 
 def test_missing_param_value_does_not_crash(artifact):
     """Redaction runs before parameter validation in some paths."""
-    redactor = Redactor(artifact, {"employee_name": "Peter Anderson"})
+    redactor = Redactor(artifact, {"product_name": "Sauce Labs Backpack"})
     assert redactor.secret_count == 0
     assert redactor.text("{{auth_password}}") == REDACTED

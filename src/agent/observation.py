@@ -57,9 +57,9 @@ MAX_SNAPSHOT_CHARS = 12_000
 
 #: Private-use-area codepoints, where icon fonts (Font Awesome and friends)
 #: put their glyphs. They surface in the accessibility tree as meaningless
-#: characters beside real labels -- OrangeHRM's login page emits one just
-#: before `Username`. They carry no information, cost tokens, and crash any
-#: non-UTF-8 console that tries to log them.
+#: characters beside real labels -- a login page will emit one just before
+#: `Username`. They carry no information, cost tokens, and crash any non-UTF-8
+#: console that tries to log them.
 PRIVATE_USE = re.compile(
     f"[{chr(0xE000)}-{chr(0xF8FF)}"
     f"{chr(0xF0000)}-{chr(0xFFFFD)}"
@@ -254,8 +254,8 @@ def distinctive_new_text(
     A checkpoint built from the *result* of the action is worse than useless:
     it passes for the recorded input and fails for every other one. A real run
     of this recorder produced `page_contains_text: "Anderson"` after a search,
-    which is the surname the recording happened to return, so replaying the
-    same artifact with any other employee id failed at that step. Candidates
+    the surname that search happened to return, so replaying the same artifact
+    with any other input failed at that step. Candidates
     are therefore ranked away from data-bearing roles and rejected outright if
     they overlap a parameter value. See PLAN.md §11 C21.
     """

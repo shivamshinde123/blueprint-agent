@@ -1,19 +1,14 @@
 {
-  "_comment": "Example tenant override. Bank A runs the same OrangeHRM build as everyone else, but on their own host, with a renamed Search button and a branding header that pushes every screenshot coordinate down. One file, no re-recording. See PLAN.md 10.2.",
-
+  "_comment": "Example tenant override. Bank A runs the same Swag Labs build as everyone else, but on their own host, with the cart control renamed and a branding header that pushes every screenshot coordinate down. One file, no re-recording. See PLAN.md 10.2.",
   "base_artifact": "golden_artifact.json",
   "tenant_id": "bank_a",
   "tenant_name": "Bank A",
-
   "overrides": {
-    "target.url": "https://banka.orangehrm.example.com",
-    "target.app_name": "OrangeHRM (Bank A)",
-
-    "steps[0].url": "https://banka.orangehrm.example.com/web/index.php/auth/login",
-
-    "steps[6].locators.primary.methods[0].name": "Find",
+    "target.url": "https://bank-a.saucedemo.example.com",
+    "target.app_name": "Swag Labs (Bank A)",
+    "steps[0].url": "https://bank-a.saucedemo.example.com/",
+    "steps[6].locators.primary.methods[0].name": "Basket",
     "steps[6].locators.fallback.coordinates.y": 512,
-
     "known_interstitials[+]": {
       "name": "bank_a_welcome_banner",
       "detect": {
@@ -25,7 +20,11 @@
             "strategy": "accessibility_tree",
             "available": true,
             "methods": [
-              { "method": "get_by_role", "role": "button", "name": "Dismiss" }
+              {
+                "method": "get_by_role",
+                "role": "button",
+                "name": "Dismiss"
+              }
             ]
           }
         }
@@ -39,13 +38,16 @@
             "strategy": "accessibility_tree",
             "available": true,
             "methods": [
-              { "method": "get_by_role", "role": "button", "name": "Dismiss" }
+              {
+                "method": "get_by_role",
+                "role": "button",
+                "name": "Dismiss"
+              }
             ]
           }
         }
       }
     }
   },
-
   "notes": "Coordinate offset of +60px accounts for Bank A's branding header. Reviewed 2026-08-20."
 }

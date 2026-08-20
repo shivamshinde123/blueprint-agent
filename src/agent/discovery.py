@@ -170,9 +170,9 @@ def to_artifact_locator(proposed: ProposedLocator) -> AccessibilityLocatorMethod
 def candidate_methods(proposed: ProposedLocator) -> list[AccessibilityLocatorMethod]:
     """The proposed method first, then the other ways of asking for the same thing.
 
-    The model picks *a* method, and it can pick a plausible-but-wrong one. On
-    OrangeHRM's login page the accessibility tree exposes ``textbox "Password"``
-    but there is no ``<label for>``, so a ``get_by_label("Password")`` proposal
+    The model picks *a* method, and it can pick a plausible-but-wrong one. A
+    login form routinely exposes ``textbox "Password"`` in the accessibility
+    tree while having no ``<label for>`` at all, so a ``get_by_label`` proposal
     resolves to nothing even though the element is trivially findable by role.
 
     Rather than lose the step, derive the alternatives from the same name and
@@ -206,7 +206,7 @@ def candidate_methods(proposed: ProposedLocator) -> list[AccessibilityLocatorMet
             method=AccessibilityMethod.GET_BY_TEXT, value=label
         ),
         # Last resort: the control sitting beside a caption the markup never
-        # wired up. Without it, OrangeHRM's "Date of Birth" is unreachable by
+        # wired up. Without it a visible "Date of Birth" caption is unreachable by
         # every accessible-name method even though a person reads it at once.
         AccessibilityLocatorMethod(
             method=AccessibilityMethod.GET_BY_FIELD_LABEL, name=label
@@ -337,7 +337,7 @@ async def settle(session: Session, timeout_ms: int = 5000) -> None:
     with contextlib.suppress(Exception):
         await session.page.wait_for_load_state("networkidle", timeout=timeout_ms)
     # Network-quiet is not render-complete: a framework re-renders a beat after
-    # its XHR resolves. OrangeHRM's PIM search goes from 342 named nodes to 57
+    # its XHR resolves. A real search went from 342 named nodes to 57
     # in that gap, so a snapshot taken at networkidle shows the *old* table and
     # the step reads as "nothing changed" -- which sent the agent into clicking
     # Search over and over.
@@ -756,12 +756,12 @@ class DiscoveryAgent:
     ) -> list[AccessibilityLocatorMethod]:
         """Keep the candidates that resolve *and* suit the action.
 
-        Resolvability alone is not enough. ``get_by_text("Employee Name")``
-        happily resolves OrangeHRM's ``<label>``, which is a perfectly real
-        element that simply cannot be typed into -- Playwright fails with
-        "Element is not an <input>". Recording that locator would bake the
-        failure into the artifact, so the element is checked against what the
-        step will actually do to it.
+        Resolvability alone is not enough. ``get_by_text`` on a field's
+        caption happily resolves the ``<label>``, a perfectly real element that
+        simply cannot be typed into -- Playwright fails with "Element is not an
+        <input>". Recording that locator would bake the failure into the
+        artifact, so the element is checked against what the step will actually
+        do to it.
         """
         working: list[AccessibilityLocatorMethod] = []
         for method in candidates:
@@ -1018,8 +1018,8 @@ class DiscoveryAgent:
             await loc.click(session, resolved)
             # A single-page app re-renders on click without navigating, so the
             # new view does not exist yet. Observing immediately shows an empty
-            # shell: OrangeHRM's PIM page reports 0 interactive nodes right
-            # after the click and 24 once the network goes quiet.
+            # shell -- a real app reported 0 interactive nodes right after the
+            # click and 24 once the network goes quiet.
             await settle(session)
             after = await observe(session.page)
             change = diff(before, after)

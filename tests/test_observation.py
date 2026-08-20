@@ -139,11 +139,11 @@ def test_diff_reports_no_change():
 
 def test_new_url_segment_picks_the_specific_part():
     change = diff(
-        make("https://app/web/index.php/auth/login", ""),
-        make("https://app/web/index.php/dashboard/index", ""),
+        make("https://store.example/inventory", ""),
+        make("https://store.example/cart", ""),
     )
     assert change.url_changed
-    assert change.new_url_segment == "dashboard"
+    assert change.new_url_segment == "cart"
 
 
 def test_new_url_segment_is_none_without_navigation():
@@ -164,8 +164,8 @@ def test_text_already_present_is_rejected():
 
 def test_genuinely_new_text_is_selected():
     before = make("http://x/a", '- button "Go"')
-    after = make("http://x/a", '- button "Go"\n- heading "No Records Found"')
-    assert distinctive_new_text(diff(before, after), before) == "No Records Found"
+    after = make("http://x/a", '- button "Go"\n- heading "Your cart is empty"')
+    assert distinctive_new_text(diff(before, after), before) == "Your cart is empty"
 
 
 def test_stable_text_is_preferred_over_variable_text():
@@ -182,14 +182,14 @@ def test_checkpoint_avoids_the_run_s_own_data():
     """The C21 case, observed in a real run.
 
     Discovery searched for an employee id and synthesised
-    `page_contains_text: "Anderson"` -- the surname that search happened to
+    `page_contains_text: "Backpack"` -- the surname that search happened to
     return. Replaying with any other id then failed at that step, because the
     checkpoint asserted *which* result rather than *that* there was one.
     """
     before = make("http://x/a", '- button "Search"')
     after = make(
         "http://x/a",
-        '- button "Search"\n- status "Records Found"\n- cell "Anderson"',
+        '- button "Search"\n- status "Records Found"\n- cell "Backpack"',
     )
     chosen = distinctive_new_text(diff(before, after), before)
     assert chosen == "Records Found", "structure must win over table data"
@@ -197,14 +197,14 @@ def test_checkpoint_avoids_the_run_s_own_data():
 
 def test_text_matching_a_parameter_value_is_rejected():
     before = make("http://x/a", '- button "Search"')
-    after = make("http://x/a", '- button "Search"\n- cell "Anderson"')
-    assert distinctive_new_text(diff(before, after), before, {"Anderson"}) is None
+    after = make("http://x/a", '- button "Search"\n- cell "Backpack"')
+    assert distinctive_new_text(diff(before, after), before, {"Backpack"}) is None
 
 
 def test_partial_overlap_with_a_parameter_is_rejected():
     before = make("http://x/a", '- button "Go"')
-    after = make("http://x/a", '- button "Go"\n- cell "Peter Anderson"')
-    assert distinctive_new_text(diff(before, after), before, {"Anderson"}) is None
+    after = make("http://x/a", '- button "Go"\n- cell "Sauce Labs Backpack"')
+    assert distinctive_new_text(diff(before, after), before, {"Backpack"}) is None
 
 
 def test_data_role_is_used_when_nothing_structural_appeared():

@@ -1,26 +1,26 @@
 {
-  "capability_id": "lookup_employee_profile",
+  "capability_id": "add_product_to_cart",
   "version": "1.0.0",
   "schema_version": "1.0.0",
-  "description": "Look up an employee in OrangeHRM PIM and return their job title and sub unit.",
+  "description": "Log in to the Swag Labs store, add a named product to the cart, and read back the line item.",
   "recorded_by": "agent",
   "created_at": "2026-08-20",
   "surface_type": "modern_web",
   "target": {
-    "app_name": "OrangeHRM",
-    "url": "https://opensource-demo.orangehrmlive.com",
+    "app_name": "SauceDemo",
+    "url": "https://www.saucedemo.com",
     "surface_type": "modern_web"
   },
 
   "input_parameters": {
-    "auth_username": { "type": "string", "required": true, "sensitive": true, "description": "OrangeHRM login" },
-    "auth_password": { "type": "string", "required": true, "sensitive": true, "description": "OrangeHRM password" },
-    "employee_name": { "type": "string", "required": true, "sensitive": false, "description": "Full or partial employee name" }
+    "auth_username": { "type": "string", "required": true, "sensitive": true, "description": "Store login" },
+    "auth_password": { "type": "string", "required": true, "sensitive": true, "description": "Store password" },
+    "product_name": { "type": "string", "required": true, "sensitive": false, "description": "Product to add to the cart" }
   },
 
   "output_schema": {
-    "job_title": "string",
-    "sub_unit": "string"
+    "item_name": "string",
+    "item_price": "currency"
   },
 
   "replay_config": {
@@ -44,7 +44,7 @@
 
   "session_recovery": {
     "detect_conditions": [
-      { "condition": "url_contains", "value": "/auth/login", "on_fail": "retry" }
+      { "condition": "url_not_contains", "value": "inventory", "on_fail": "retry" }
     ],
     "recovery_steps": [
       {
@@ -73,7 +73,7 @@
     ],
     "recovery_post_condition": {
       "condition": "url_not_contains",
-      "value": "/auth/login",
+      "value": "saucedemo.com/index",
       "timeout_ms": 8000,
       "on_fail": "on_recovery_fail"
     },
@@ -110,14 +110,14 @@
     {
       "step_id": 1,
       "action": "navigate",
-      "description": "Open the OrangeHRM login page.",
+      "description": "Open the Swag Labs store front.",
       "fragile": false,
       "risk_level": "safe",
       "pre_condition": null,
-      "url": "https://opensource-demo.orangehrmlive.com/web/index.php/auth/login",
+      "url": "https://www.saucedemo.com/",
       "post_condition": {
-        "condition": "url_contains",
-        "value": "/auth/login",
+        "condition": "page_contains_text",
+        "value": "Swag Labs",
         "timeout_ms": 8000,
         "on_fail": "hard_failure"
       }
@@ -143,10 +143,10 @@
           "methods": [{ "method": "get_by_placeholder", "value": "Username" }] },
         "fallback": {
           "strategy": "screenshot",
-          "coordinates": { "x": 812, "y": 322 },
+          "coordinates": { "x": 640, "y": 292 },
           "scroll_y": 0,
           "viewport": { "width": 1280, "height": 720 },
-          "visual_description": "Username input, first field in the login card on the right"
+          "visual_description": "Username input, first field in the login form"
         }
       },
       "post_condition": {
@@ -181,7 +181,7 @@
           "methods": [{ "method": "get_by_placeholder", "value": "Password" }] },
         "fallback": {
           "strategy": "screenshot",
-          "coordinates": { "x": 812, "y": 385 },
+          "coordinates": { "x": 640, "y": 342 },
           "scroll_y": 0,
           "viewport": { "width": 1280, "height": 720 },
           "visual_description": "Password input, directly below the username field"
@@ -209,15 +209,15 @@
           "methods": [{ "method": "get_by_role", "role": "button", "name": "Login" }] },
         "fallback": {
           "strategy": "screenshot",
-          "coordinates": { "x": 812, "y": 452 },
+          "coordinates": { "x": 640, "y": 400 },
           "scroll_y": 0,
           "viewport": { "width": 1280, "height": 720 },
-          "visual_description": "Orange Login button below the password field"
+          "visual_description": "Green Login button below the password field"
         }
       },
       "post_condition": {
         "condition": "url_contains",
-        "value": "/dashboard",
+        "value": "inventory",
         "timeout_ms": 8000,
         "on_fail": "retry"
       }
@@ -225,94 +225,80 @@
     {
       "step_id": 5,
       "action": "click",
-      "description": "Open the PIM (employee management) module from the sidebar.",
+      "description": "Open the requested product from the catalogue.",
       "fragile": false,
       "risk_level": "safe",
       "pre_condition": {
         "condition": "url_contains",
-        "value": "/dashboard",
+        "value": "inventory",
         "timeout_ms": 8000,
         "on_fail": "hard_failure"
       },
       "locators": {
         "primary": { "strategy": "accessibility_tree", "available": true,
-          "methods": [{ "method": "get_by_role", "role": "link", "name": "PIM" }] },
+          "methods": [{ "method": "get_by_text", "value": "{{product_name}}" }] },
         "fallback": {
           "strategy": "screenshot",
-          "coordinates": { "x": 92, "y": 246 },
+          "coordinates": { "x": 348, "y": 296 },
           "scroll_y": 0,
           "viewport": { "width": 1280, "height": 720 },
-          "visual_description": "PIM entry in the left sidebar navigation"
+          "visual_description": "Product title link in the catalogue grid"
         }
       },
       "post_condition": {
         "condition": "url_contains",
-        "value": "/viewEmployeeList",
+        "value": "inventory-item",
         "timeout_ms": 8000,
         "on_fail": "retry"
       }
     },
     {
       "step_id": 6,
-      "action": "fill",
-      "description": "Type the employee name into the PIM search box.",
+      "action": "click",
+      "description": "Add the product to the cart.",
       "fragile": false,
-      "risk_level": "safe",
-      "value": "{{employee_name}}",
-      "pre_condition": {
-        "condition": "element_visible",
-        "timeout_ms": 8000,
-        "on_fail": "retry",
-        "locators": {
-          "primary": { "strategy": "accessibility_tree", "available": true,
-            "methods": [{ "method": "get_by_placeholder", "value": "Type for hints..." }] }
-        }
-      },
+      "risk_level": "low",
       "locators": {
         "primary": { "strategy": "accessibility_tree", "available": true,
-          "methods": [{ "method": "get_by_placeholder", "value": "Type for hints..." }] },
+          "methods": [{ "method": "get_by_role", "role": "button", "name": "Add to cart" }] },
         "fallback": {
           "strategy": "screenshot",
-          "coordinates": { "x": 344, "y": 268 },
+          "coordinates": { "x": 780, "y": 470 },
           "scroll_y": 0,
           "viewport": { "width": 1280, "height": 720 },
-          "visual_description": "Employee Name input in the PIM search panel"
+          "visual_description": "Add to cart button beneath the product price"
         }
       },
       "post_condition": {
-        "condition": "element_has_value",
-        "value": "{{employee_name}}",
-        "timeout_ms": 4000,
-        "on_fail": "retry",
-        "locators": {
-          "primary": { "strategy": "accessibility_tree", "available": true,
-            "methods": [{ "method": "get_by_placeholder", "value": "Type for hints..." }] }
-        }
+        "condition": "page_contains_text",
+        "value": "Remove",
+        "timeout_ms": 8000,
+        "on_fail": "retry"
       }
     },
     {
       "step_id": 7,
       "action": "click",
-      "description": "Run the employee search.",
+      "description": "Open the shopping cart.",
       "fragile": false,
       "risk_level": "safe",
       "locators": {
         "primary": { "strategy": "accessibility_tree", "available": true,
           "methods": [
-            { "method": "get_by_role", "role": "button", "name": "Search" },
-            { "method": "get_by_text", "value": "Search" }
+            { "method": "get_by_role", "role": "link", "name": "shopping cart" },
+            { "method": "get_by_text", "value": "shopping cart" }
           ] },
         "fallback": {
           "strategy": "screenshot",
-          "coordinates": { "x": 1128, "y": 452 },
+          "coordinates": { "x": 1218, "y": 44 },
           "scroll_y": 0,
           "viewport": { "width": 1280, "height": 720 },
-          "visual_description": "Orange Search button at the bottom right of the search panel"
+          "visual_description": "Cart icon in the top right of the header"
         }
       },
       "post_condition": {
-        "condition": "page_contains_text",
-        "value": "Records Found",
+        "condition": "url_contains",
+        "value": "cart",
         "timeout_ms": 8000,
         "on_fail": "retry"
       }
@@ -320,47 +306,48 @@
     {
       "step_id": 8,
       "action": "extract",
-      "description": "Read the job title and sub unit from the results row.",
+      "description": "Read the line item name and price from the cart.",
       "fragile": false,
       "risk_level": "safe",
       "pre_condition": {
-        "condition": "page_contains_text",
-        "value": "Records Found",
+        "condition": "url_contains",
+        "value": "cart",
         "timeout_ms": 8000,
         "on_fail": "hard_failure"
       },
       "extractions": [
         {
-          "output_key": "job_title",
+          "output_key": "item_name",
           "extract_method": "inner_text",
           "expected_type": "string",
           "required": true,
           "locators": {
             "primary": { "strategy": "accessibility_tree", "available": true,
-              "methods": [{ "method": "get_by_role", "role": "cell", "name": "Job Title" }] },
+              "methods": [{ "method": "get_by_text", "value": "{{product_name}}" }] },
             "fallback": {
               "strategy": "screenshot",
-              "region": { "x": 620, "y": 560, "width": 180, "height": 40 },
+              "region": { "x": 250, "y": 300, "width": 300, "height": 30 },
               "scroll_y": 0,
               "viewport": { "width": 1280, "height": 720 },
-              "visual_description": "Job Title column value in the first result row"
+              "visual_description": "Line item title in the cart list"
             }
           }
         },
         {
-          "output_key": "sub_unit",
+          "output_key": "item_price",
           "extract_method": "inner_text",
-          "expected_type": "string",
+          "expected_type": "currency",
           "required": true,
+          "pattern": "\\$[\\d,.]+",
           "locators": {
             "primary": { "strategy": "accessibility_tree", "available": true,
-              "methods": [{ "method": "get_by_role", "role": "cell", "name": "Sub Unit" }] },
+              "methods": [{ "method": "get_by_text", "pattern": "\\$[\\d,.]+" }] },
             "fallback": {
               "strategy": "screenshot",
-              "region": { "x": 900, "y": 560, "width": 180, "height": 40 },
+              "region": { "x": 250, "y": 360, "width": 120, "height": 30 },
               "scroll_y": 0,
               "viewport": { "width": 1280, "height": 720 },
-              "visual_description": "Sub Unit column value in the first result row"
+              "visual_description": "Line item price in the cart list"
             }
           }
         }
@@ -376,31 +363,31 @@
   "business_outcomes": [
     {
       "step_ids": [7, 8],
-      "name": "Employee not found",
+      "name": "Cart is empty",
       "detect": {
         "condition": "page_contains_text",
-        "value": "No Records Found",
+        "value": "Your cart is empty",
         "timeout_ms": 4000,
         "on_fail": "retry"
       },
-      "outcome_code": "EMPLOYEE_NOT_FOUND",
-      "outcome_message": "No employee matched the supplied name.",
+      "outcome_code": "CART_EMPTY",
+      "outcome_message": "The product was not added, so the cart holds no line item.",
       "is_error": false,
-      "return_value": { "job_title": null, "sub_unit": null }
+      "return_value": { "item_name": null, "item_price": null }
     },
     {
       "step_ids": [4],
       "name": "Authentication failed",
       "detect": {
         "condition": "page_contains_text",
-        "value": "Invalid credentials",
+        "value": "Username and password do not match",
         "timeout_ms": 4000,
         "on_fail": "retry"
       },
       "outcome_code": "AUTH_FAILED",
-      "outcome_message": "The supplied credentials were rejected by OrangeHRM.",
+      "outcome_message": "The supplied credentials were rejected by the store.",
       "is_error": false,
-      "return_value": { "job_title": null, "sub_unit": null }
+      "return_value": { "item_name": null, "item_price": null }
     }
   ],
 
@@ -450,7 +437,7 @@
         "category": "hard_failure",
         "action": "stop",
         "capture_screenshot": true,
-        "message": "Result row rendered but the job title or sub unit cell was empty."
+        "message": "The cart rendered but a line item field was empty."
       }
     }
   },
@@ -461,7 +448,7 @@
 
   "provenance": {
     "source_run_id": "fixture-golden-0001",
-    "model_id": "claude-sonnet-5",
+    "model_id": "anthropic/claude-sonnet-5",
     "notes": "Hand-written golden fixture for schema tests; not produced by a real discovery run."
   }
 }

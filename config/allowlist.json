@@ -1,29 +1,23 @@
 {
-  "_comment": "Checked before every action in BOTH discovery and replay. The agent cannot act outside this file. See PLAN.md §7 G1.",
-
+  "_comment": "Checked before every action in BOTH discovery and replay. The agent cannot act outside this file. See PLAN.md \u00a77 G1.",
   "permitted_domains": [
     "www.saucedemo.com",
     "saucedemo.com",
-    "opensource-demo.orangehrmlive.com",
-    "demo.guru99.com",
-    "www.demo.guru99.com",
     "127.0.0.1",
     "localhost"
   ],
-
   "permitted_url_patterns": [
     "/inventory",
     "/cart",
     "/checkout",
-    "/web/index.php/auth/",
-    "/web/index.php/pim/",
-    "/web/index.php/dashboard/",
-    "/V4/",
     "/mock/"
   ],
-
-  "permitted_actions": ["click", "fill", "navigate", "extract"],
-
+  "permitted_actions": [
+    "click",
+    "fill",
+    "navigate",
+    "extract"
+  ],
   "blocked_actions": [
     "upload",
     "download",
@@ -31,6 +25,5 @@
     "open_new_window",
     "accept_download"
   ],
-
   "_blocked_note": "Blocked actions are refused even if the discovery LLM explicitly asks for them. The block is enforced in code, not only in the prompt."
 }

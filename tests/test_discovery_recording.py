@@ -108,8 +108,8 @@ def test_substitute_ignores_none_values():
 
 
 def test_navigation_produces_a_url_checkpoint():
-    before = make("https://app/web/index.php/auth/login", '- button "Login"')
-    after = make("https://app/web/index.php/dashboard/index", '- heading "Dashboard"')
+    before = make("https://store.example/inventory", '- button "Login"')
+    after = make("https://store.example/cart", '- heading "Your Cart"')
 
     condition, warning = synthesise_post_condition(
         diff(before, after),
@@ -120,7 +120,7 @@ def test_navigation_produces_a_url_checkpoint():
         timeout_ms=8000,
     )
     assert condition.condition is ConditionType.URL_CONTAINS
-    assert condition.value == "dashboard"
+    assert condition.value == "cart"
     assert warning is None
 
 
@@ -134,11 +134,11 @@ def test_fill_checkpoint_asserts_the_field_holds_the_value():
         before,
         action=ActionType.FILL,
         locators=locators,
-        value="{{employee_name}}",
+        value="{{product_name}}",
         timeout_ms=8000,
     )
     assert condition.condition is ConditionType.ELEMENT_HAS_VALUE
-    assert condition.value == "{{employee_name}}"
+    assert condition.value == "{{product_name}}"
     assert condition.locators is not None
     assert warning is None
 
@@ -241,7 +241,7 @@ def test_credential_like_names_default_to_sensitive(name):
     assert _looks_sensitive(name)
 
 
-@pytest.mark.parametrize("name", ["employee_name", "account_number", "branch", "query"])
+@pytest.mark.parametrize("name", ["product_name", "account_number", "branch", "query"])
 def test_ordinary_names_are_not_sensitive(name):
     assert not _looks_sensitive(name)
 
