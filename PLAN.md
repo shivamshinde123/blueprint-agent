@@ -1,6 +1,6 @@
 # PLAN.md — Blueprint_Agent
 
-**Status:** Phase 0 complete — schema, validation, CLI, and 79 passing tests. Phase 1 next.
+**Status:** Phases 0–1 complete — schema, safety, browser, evidence, legacy mock. 176 tests passing. Phase 2 (discovery) next.
 **Last updated:** 2026-08-20
 **Source of truth:** [Notion project page](https://app.notion.com/p/3bd3166155398177b587cb3d9ab26701) (10 sub-pages) + the assignment PDF.
 
@@ -59,17 +59,17 @@ blocking gaps are closed. Dependency management is `uv` (D4), lockfile committed
 |---|---|---|
 | Python | ✅ 3.12.4 | Anaconda distribution; 3.10 also on the `py` launcher |
 | pip | ✅ 25.2 | |
-| git | ✅ 2.54.0.windows.1 | Repo **not** yet initialized here |
-| GitHub CLI | ✅ 2.88.1 | Can create the public repo without leaving the terminal |
+| git | ✅ 2.54.0.windows.1 | Repo initialized; pushed to [shivamshinde123/blueprint-agent](https://github.com/shivamshinde123/blueprint-agent) |
+| GitHub CLI | ✅ 2.88.1 | Authenticated as `shivamshinde123`; public repo created |
 | Node | ✅ v22.18.0 | Not required; incidental |
 | uv | ✅ 0.9.6 | Project + dependency manager (D4) |
-| `anthropic` | ✅ | `messages.parse` structured outputs |
+| `openai` | ✅ 3.3.1 | Client for the OpenRouter gateway (D5). The `anthropic` SDK was removed |
 | `pydantic` | ✅ 2.13.4 | v2 — `@field_validator` / `@model_validator` |
 | `playwright` | ✅ 1.62.0 | Chromium installed |
 | `fastapi` / `uvicorn` | ✅ | Operator console |
 | `python-dotenv` | ✅ | |
 | `pytest` / `pytest-asyncio` | ✅ 9.1.1 / 1.4.0 | `asyncio_mode = "auto"` |
-| `ANTHROPIC_API_KEY` | ⚠️ **still blank** | In `.env` (gitignored). Only needed for `discover` — `validate` and `replay --mode strict` run without it |
+| `OPENROUTER_API_KEY` | ⚠️ **still blank** | In `.env` (gitignored). Only needed for `discover` — `validate` and `replay --mode strict` run without it |
 
 ### Gaps closed
 
@@ -79,8 +79,8 @@ blocking gaps are closed. Dependency management is `uv` (D4), lockfile committed
 - [x] `.gitignore` written **before** `.env` existed; `.env` verified ignored
 - [x] Guru99 demo credentials received and stored in `.env`
 - [x] `git init`
-- [ ] **Anthropic API key** → `.env` *(only blocker remaining, and only for Phase 2)*
-- [ ] Public GitHub repo created and pushed
+- [x] Public GitHub repo created and pushed — <https://github.com/shivamshinde123/blueprint-agent>
+- [ ] **`OPENROUTER_API_KEY`** → `.env` *(only blocker remaining, and only for Phase 2)*
 
 ---
 
@@ -131,6 +131,8 @@ src/
 │   ├── discovery.py      observe→decide→act loop, step recorder
 │   ├── prompts.py        every LLM prompt, in one place
 │   └── decisions.py      Pydantic models for structured LLM output
+├── llm/
+│   └── client.py         provider-agnostic gateway client (D5)
 ├── replay/
 │   ├── engine.py         the deterministic executor
 │   ├── locator.py        Layer 1 chain + Layer 2 fallback
@@ -161,7 +163,8 @@ Blueprint_Agent/
 ├── .env                   NEVER committed
 ├── .env.example           committed, no real values
 ├── .gitignore
-├── requirements.txt
+├── pyproject.toml         uv project + deps + pytest config
+├── uv.lock
 ├── main.py                CLI entry point
 ├── config/
 │   ├── allowlist.json     permitted domains, routes, actions
@@ -862,14 +865,15 @@ discovery run is attributable after the fact.
 - [x] `README.md` + `REPORT.md` shells with required headings
 - [x] First commit
 
-### Phase 1 — Foundation
+### Phase 1 — Foundation ✅ complete
 
-- [ ] `src/artifact/validator.py` — Pydantic load + §11 C13 cross-reference checks
-- [ ] `src/session/browser.py` — pinned context factory (§4.3); trace/video/HAR disabled (§11 C12)
-- [ ] `src/safety/guardrails.py` — allowlist + risk gate
-- [ ] `src/safety/redaction.py` — `redact_sensitive`, `redact_step_log`
-- [ ] `src/evidence/logger.py` — structured run log writer
-- [ ] `mock/legacy_bank.html` + static route (§11 C11)
+- [x] `src/artifact/validator.py` — load, parameter checks, escalation availability, browser match
+- [x] `src/session/browser.py` — pinned context factory (§4.3); trace/video/HAR never enabled (§11 C12); viewport-only screenshots (§11 C1)
+- [x] `src/safety/guardrails.py` — allowlist + risk gate. **`check_origin` vs `check_url` split**: `target.url` names the app and is normally a bare origin, so route patterns must not apply to it
+- [x] `src/safety/redaction.py` — literal values + `{{template}}` names, longest-first, `model_dump()` walk
+- [x] `src/evidence/logger.py` — run log with `llm_calls_made` and per-call provider attribution (§11 C19)
+- [x] `mock/legacy_bank.html` + `mock/server.py` on `:8081` (§11 C11), with tests asserting Layer 1 genuinely fails on it
+- [x] **176 tests passing**, no network required
 
 ### Phase 2 — Discovery
 
