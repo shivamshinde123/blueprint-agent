@@ -478,3 +478,96 @@ def test_pattern_that_matches_nothing_fails_loudly():
     )
     with pytest.raises(ReplayFailure, match="matched nothing"):
         apply_pattern("no price on this page", extraction, 4)
+
+
+# --------------------------------------------------------------------------
+# Addressing a value by the shape of its text
+# --------------------------------------------------------------------------
+
+
+def test_shape_addressed_locator_is_allowed(artifact_dict):
+    r"""`get_by_text(\$[\d,.]+)` finds a price without naming one."""
+    extraction = artifact_dict["steps"][7]["extractions"][0]
+    extraction["locators"]["primary"]["methods"] = [
+        {"method": "get_by_text", "pattern": r"\$[\d,.]+"}
+    ]
+    assert check_reusable(_artifact(artifact_dict), {"price": "$29.99"}) == []
+
+
+def test_value_addressed_locator_pattern_is_a_violation(artifact_dict):
+    """The same circular bug, now in a locator pattern."""
+    extraction = artifact_dict["steps"][7]["extractions"][0]
+    extraction["locators"]["primary"]["methods"] = [
+        {"method": "get_by_text", "pattern": r"\$29\.99"}
+    ]
+    violations = check_reusable(_artifact(artifact_dict), {"price": "$29.99"})
+    assert violations
+    assert "pattern" in violations[0].where
+
+
+def test_locator_pattern_only_applies_to_get_by_text(artifact_dict):
+    from pydantic import ValidationError
+
+    artifact_dict["steps"][3]["locators"]["primary"]["methods"] = [
+        {"method": "get_by_role", "role": "button", "name": "Login", "pattern": r"\d+"}
+    ]
+    with pytest.raises(ValidationError, match="only meaningful"):
+        _artifact(artifact_dict)
+
+
+def test_get_by_text_accepts_pattern_instead_of_value(artifact_dict):
+    artifact_dict["steps"][3]["locators"]["primary"]["methods"] = [
+        {"method": "get_by_text", "pattern": r"Log ?in"}
+    ]
+    artifact = _artifact(artifact_dict)
+    assert artifact.step_by_id(4).locators.primary.methods[0].pattern == r"Log ?in"
+
+
+def test_get_by_text_needs_value_or_pattern(artifact_dict):
+    from pydantic import ValidationError
+
+    artifact_dict["steps"][3]["locators"]["primary"]["methods"] = [
+        {"method": "get_by_text"}
+    ]
+    with pytest.raises(ValidationError, match="requires 'value' or 'pattern'"):
+        _artifact(artifact_dict)
+
+
+@needs_chromium
+async def test_shape_addressing_finds_a_value_with_no_identity():
+    """The SauceDemo case, reproduced locally.
+
+    A price in a bare div: no label, no role, and its own text is the value.
+    Every name-based method is either unavailable or circular; the shape finds
+    it, and finds a *different* product's price unchanged.
+    """
+    from src.artifact.schema import (
+        AccessibilityLocatorMethod,
+        AccessibilityMethod,
+        Locators,
+        PrimaryLocator,
+    )
+    from src.replay.locator import build_playwright_locator
+
+    page_html = """
+    <!doctype html><html><body>
+      <div>Sauce Labs Backpack</div>
+      <div>carry.allTheThings() with the sleek Sly Pack</div>
+      <div>$29.99</div>
+    </body></html>
+    """
+    method = AccessibilityLocatorMethod(
+        method=AccessibilityMethod.GET_BY_TEXT, pattern=r"\$[\d,.]+"
+    )
+    Locators(primary=PrimaryLocator(methods=[method], available=True))
+
+    async with browser_session(BrowserConfig(headless=True)) as session:
+        await session.page.set_content(page_html)
+        found = build_playwright_locator(session.page, method, {})
+        assert await found.count() == 1
+        assert (await found.first.inner_text()).strip() == "$29.99"
+
+        # A different price, same locator, no change.
+        await session.page.set_content(page_html.replace("$29.99", "$9.99"))
+        found = build_playwright_locator(session.page, method, {})
+        assert (await found.first.inner_text()).strip() == "$9.99"

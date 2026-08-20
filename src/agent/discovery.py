@@ -148,7 +148,12 @@ def to_artifact_locator(proposed: ProposedLocator) -> AccessibilityLocatorMethod
         value = name
 
     return AccessibilityLocatorMethod(
-        method=method, role=proposed.role, name=name, value=value, nth=proposed.nth
+        method=method,
+        role=proposed.role,
+        name=name,
+        value=value,
+        nth=proposed.nth,
+        pattern=proposed.pattern,
     )
 
 
@@ -169,7 +174,9 @@ def candidate_methods(proposed: ProposedLocator) -> list[AccessibilityLocatorMet
     label = proposed.name or proposed.value
     methods = [primary]
 
-    if not label:
+    # A shape-addressed locator identifies itself; there is no name to build
+    # alternatives from, and treating the regex as one would be nonsense.
+    if proposed.pattern or not label:
         return methods
 
     alternatives = [

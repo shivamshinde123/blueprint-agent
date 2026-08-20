@@ -15,6 +15,7 @@ question is not asked at all. See PLAN.md §11 C10.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -93,6 +94,11 @@ def build_playwright_locator(
     if method.method is AccessibilityMethod.GET_BY_PLACEHOLDER:
         return page.get_by_placeholder(value or name or "", exact=False)
     if method.method is AccessibilityMethod.GET_BY_TEXT:
+        if method.pattern:
+            # Address the element by the shape of its text. The only way to
+            # reach a value that has no label, no role, and whose own text is
+            # the thing being read -- see AccessibilityLocatorMethod.pattern.
+            return page.get_by_text(re.compile(method.pattern))
         return page.get_by_text(value or name or "", exact=False)
     if method.method is AccessibilityMethod.GET_BY_FIELD_LABEL:
         return page.locator(field_label_xpath(name or value or ""))

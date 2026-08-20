@@ -128,6 +128,11 @@ def locator_texts(locators: Locators | None) -> Iterator[tuple[str, str]]:
         for field_name, text in (("name", method.name), ("value", method.value)):
             if text:
                 yield f"{method.method.value}.{field_name}", text
+        if method.pattern:
+            # Addressing by shape is allowed; addressing by this run's value
+            # wearing a regex is the same circular bug. Unescaped so the
+            # backslashes cannot hide a literal.
+            yield f"{method.method.value}.pattern", unescape_regex(method.pattern)
     if locators.fallback and locators.fallback.visual_description:
         # The description is a hint for a vision model, not a matcher, so a
         # name appearing here is a much weaker signal -- but still worth

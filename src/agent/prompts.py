@@ -146,6 +146,33 @@ Locate the value by something that does not change: the caption beside it, its \
 role, or its position among similar elements. If the value has no caption and \
 no distinct role, use `nth` to say which one it is.
 
+## When a value has nothing to identify it
+
+Sometimes a value sits in a bare element with no caption, no role and no \
+usable neighbour, and the only text identifying it is the value itself. Naming \
+it is circular and will be rejected.
+
+Address it by *shape*: use `get_by_text` and set the locator's `pattern` to a \
+regex describing what that kind of value looks like. `\\$[\\d,.]+` finds a \
+price on any product page, for any price, without naming one. A date, a \
+reference number, a percentage -- each has a shape.
+
+Be aware the page state you are given is an accessibility tree, and it merges \
+neighbouring text that has no role of its own. A value is often its own \
+element on the page even when the tree shows it run together with the text \
+beside it. If you can see a value but find no node for it, addressing by shape \
+is the way through.
+
+## When one element really does hold several values
+
+If the element you can address contains more than the value you want -- a \
+block carrying a name, a description and a price together -- set `pattern` on \
+the *extraction* as well, to isolate the part you need. Use one capture group \
+when the value sits in the middle of the text.
+
+Both patterns follow the same rule as everything else here: describe the \
+shape, never this run's answer.
+
 # Risk
 
 Classify every action:

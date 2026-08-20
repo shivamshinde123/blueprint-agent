@@ -319,6 +319,20 @@ class AccessibilityLocatorMethod(Base):
     #: explicit, reviewable, and identical on every run.
     nth: int | None = None
 
+    #: With ``get_by_text``: match elements whose text has this *shape*.
+    #:
+    #: The last resort for a value with no label, no role and no usable
+    #: neighbour. SauceDemo puts a product's price in a bare ``<div>``; the
+    #: accessibility snapshot merges it into a neighbouring text run, so it is
+    #: not visible as a node at all, and the only text that identifies it is
+    #: the price itself -- which is circular and banned.
+    #:
+    #: Addressing it by shape breaks that deadlock: ``\$[\d,.]+`` finds the
+    #: price on any product page, for any price, without naming one. Like an
+    #: extraction pattern it describes the shape and never the value, and the
+    #: reusability check holds it to that.
+    pattern: str | None = None
+
     @model_validator(mode="after")
     def check_required_fields_for_method(self) -> AccessibilityLocatorMethod:
         if self.method is AccessibilityMethod.GET_BY_ROLE:
@@ -331,10 +345,23 @@ class AccessibilityLocatorMethod(Base):
                     "which is not a decision anyone recorded"
                 )
         elif self.method is AccessibilityMethod.GET_BY_TEXT:
-            if not self.value:
-                raise ValueError("get_by_text requires 'value'")
+            if not self.value and not self.pattern:
+                raise ValueError("get_by_text requires 'value' or 'pattern'")
         elif not (self.name or self.value):
             raise ValueError(f"{self.method.value} requires 'name' or 'value'")
+
+        if self.pattern is not None:
+            if self.method is not AccessibilityMethod.GET_BY_TEXT:
+                raise ValueError(
+                    f"'pattern' matches element text, so it is only meaningful "
+                    f"with get_by_text, not {self.method.value}"
+                )
+            try:
+                re.compile(self.pattern)
+            except re.error as exc:
+                raise ValueError(
+                    f"locator pattern is not a valid regular expression: {exc}"
+                ) from exc
         return self
 
 

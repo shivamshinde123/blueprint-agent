@@ -55,6 +55,17 @@ class ProposedLocator(Base):
     name: str | None = Field(default=None, description="Accessible name or label")
     #: Literal text, for get_by_text and get_by_placeholder.
     value: str | None = Field(default=None, description="Text or placeholder value")
+    #: Address the element by the shape of its text, with get_by_text.
+    pattern: str | None = Field(
+        default=None,
+        description=(
+            "With get_by_text: a regex matching the element's text by SHAPE. "
+            "Use when a value has no label, no role, and the only text "
+            r"identifying it is the value itself -- '\$[\d,.]+' finds a price "
+            "on any product page. Never write the value: that only ever finds "
+            "this run's answer."
+        ),
+    )
     #: Which match to take, when position is more stable than the name.
     nth: int | None = Field(
         default=None,
