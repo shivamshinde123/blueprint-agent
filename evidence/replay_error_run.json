@@ -1,0 +1,119 @@
+{
+  "run_id": "replay-20260820T184935-482830",
+  "capability_id": "lookup_product_price",
+  "phase": "replay",
+  "mode": "strict",
+  "target_url": "https://www.saucedemo.com",
+  "started_at": "2026-08-20T18:49:35.241+00:00",
+  "finished_at": "2026-08-20T18:50:03.545+00:00",
+  "duration_ms": 28304,
+  "result_type": "failure",
+  "params": {
+    "product_name": "Sauce Labs Bike Light",
+    "auth_username": "***REDACTED***",
+    "auth_password": "***REDACTED***"
+  },
+  "browser": {
+    "viewport_width": 1280,
+    "viewport_height": 720,
+    "device_scale_factor": 1,
+    "locale": "en-US",
+    "timezone_id": "UTC",
+    "is_mobile": false,
+    "headless": false
+  },
+  "steps_completed": 4,
+  "layer2_used": false,
+  "llm_calls_made": 0,
+  "steps": [
+    {
+      "step_id": 1,
+      "action": "navigate",
+      "description": "Open https://www.saucedemo.com",
+      "timestamp": "2026-08-20T18:49:36.226+00:00",
+      "layer_used": null,
+      "locator_used": null,
+      "pre_condition": "skipped",
+      "post_condition": "passed",
+      "outcome": "ok",
+      "duration_ms": 594,
+      "retries": 0,
+      "notes": null
+    },
+    {
+      "step_id": 2,
+      "action": "fill",
+      "description": "Start login process by filling the username field with the parameterized credential.",
+      "timestamp": "2026-08-20T18:49:36.824+00:00",
+      "layer_used": "accessibility_tree",
+      "locator_used": {
+        "method": "get_by_role",
+        "role": "textbox",
+        "name": "Username",
+        "value": null,
+        "nth": null
+      },
+      "pre_condition": "passed",
+      "post_condition": "passed",
+      "outcome": "ok",
+      "duration_ms": 125,
+      "retries": 0,
+      "notes": null
+    },
+    {
+      "step_id": 3,
+      "action": "fill",
+      "description": "Username is filled; now fill the password field with the parameterized password before logging in.",
+      "timestamp": "2026-08-20T18:49:36.947+00:00",
+      "layer_used": "accessibility_tree",
+      "locator_used": {
+        "method": "get_by_role",
+        "role": "textbox",
+        "name": "Password",
+        "value": null,
+        "nth": null
+      },
+      "pre_condition": "passed",
+      "post_condition": "passed",
+      "outcome": "ok",
+      "duration_ms": 47,
+      "retries": 0,
+      "notes": null
+    },
+    {
+      "step_id": 4,
+      "action": "click",
+      "description": "Both username and password fields are filled; now click the Login button to submit the form.",
+      "timestamp": "2026-08-20T18:49:36.989+00:00",
+      "layer_used": "accessibility_tree",
+      "locator_used": {
+        "method": "get_by_role",
+        "role": "button",
+        "name": "Login",
+        "value": null,
+        "nth": null
+      },
+      "pre_condition": "passed",
+      "post_condition": "passed",
+      "outcome": "ok",
+      "duration_ms": 108,
+      "retries": 0,
+      "notes": null
+    }
+  ],
+  "llm_calls": [],
+  "interventions": [],
+  "outputs": null,
+  "evidence": {
+    "screenshot": "evidence\\screenshots\\replay-20260820T184935-482830_failure.png",
+    "dom_snapshot": "evidence\\screenshots\\replay-20260820T184935-482830_failure.html"
+  },
+  "failure": {
+    "failure_category": "hard_failure",
+    "failed_at_step": 5,
+    "error_type": "checkpoint_failed",
+    "message": "checkpoint_failed at step 5 after 2 retries: no further detail",
+    "expected": "page contains text 'Go back'",
+    "observed": "page begins: Open Menu Swag Labs Back to products Sauce Labs Bike Light A red light isn't the desired state in testing but it sure he..."
+  }
+}

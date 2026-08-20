@@ -44,5 +44,7 @@ artifacts/heal/
 Thumbs.db
 .idea/
 .vscode/
-artifacts/
-evidence/
+# Artifacts and evidence logs ARE deliverables and are committed. Only the
+# screenshots stay out: a failure screenshot captures whatever was on screen,
+# which can include PII, and redaction cannot reach inside a PNG.
+

@@ -1,0 +1,940 @@
+{
+  "capability_id": "lookup_employee_dob",
+  "version": "1.0.0",
+  "schema_version": "1.0.0",
+  "description": "Log in, go to PIM, search for the employee whose name is given, open them from the results, and get their date of birth.",
+  "recorded_by": "agent",
+  "created_at": "2026-08-20",
+  "surface_type": "modern_web",
+  "target": {
+    "app_name": "opensource-demo",
+    "url": "https://opensource-demo.orangehrmlive.com/",
+    "surface_type": "modern_web"
+  },
+  "input_parameters": {
+    "employee_name": {
+      "type": "string",
+      "required": true,
+      "sensitive": false
+    },
+    "auth_username": {
+      "type": "string",
+      "required": true,
+      "sensitive": true
+    },
+    "auth_password": {
+      "type": "string",
+      "required": true,
+      "sensitive": true
+    }
+  },
+  "output_schema": {
+    "date_of_birth": "string"
+  },
+  "replay_config": {
+    "browser": {
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "device_scale_factor": 1,
+      "is_mobile": false,
+      "headless": false,
+      "locale": "en-US",
+      "timezone_id": "UTC",
+      "reduced_motion": "reduce",
+      "enforce_strictly": true
+    },
+    "mode": "strict",
+    "default_timeout_ms": 8000,
+    "interstitial_probe_timeout_ms": 250,
+    "max_retries_per_step": 3,
+    "retry_wait_ms": 1000,
+    "max_llm_calls_per_replay": 3
+  },
+  "known_interstitials": [],
+  "steps": [
+    {
+      "step_id": 1,
+      "action": "navigate",
+      "description": "Open https://opensource-demo.orangehrmlive.com/",
+      "fragile": false,
+      "risk_level": "safe",
+      "url": "https://opensource-demo.orangehrmlive.com/",
+      "post_condition": {
+        "condition": "url_contains",
+        "value": "login",
+        "timeout_ms": 8000,
+        "on_fail": "hard_failure"
+      }
+    },
+    {
+      "step_id": 2,
+      "action": "fill",
+      "description": "Start login by filling the username field with the provided credential.",
+      "fragile": false,
+      "risk_level": "low",
+      "pre_condition": {
+        "condition": "element_visible",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "textbox",
+                "name": "Username"
+              },
+              {
+                "method": "get_by_placeholder",
+                "value": "Username"
+              },
+              {
+                "method": "get_by_field_label",
+                "name": "Username"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 512,
+              "y": 395
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "Text input labeled Username near the top of the login form."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      },
+      "locators": {
+        "primary": {
+          "strategy": "accessibility_tree",
+          "methods": [
+            {
+              "method": "get_by_role",
+              "role": "textbox",
+              "name": "Username"
+            },
+            {
+              "method": "get_by_placeholder",
+              "value": "Username"
+            },
+            {
+              "method": "get_by_field_label",
+              "name": "Username"
+            }
+          ],
+          "available": true
+        },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": {
+            "x": 512,
+            "y": 395
+          },
+          "scroll_y": 0,
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "visual_description": "Text input labeled Username near the top of the login form."
+        }
+      },
+      "value": "{{auth_username}}",
+      "post_condition": {
+        "condition": "element_has_value",
+        "value": "{{auth_username}}",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "textbox",
+                "name": "Username"
+              },
+              {
+                "method": "get_by_placeholder",
+                "value": "Username"
+              },
+              {
+                "method": "get_by_field_label",
+                "name": "Username"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 512,
+              "y": 395
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "Text input labeled Username near the top of the login form."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      }
+    },
+    {
+      "step_id": 3,
+      "action": "fill",
+      "description": "Username field already filled with Admin; now fill password field with credential parameter.",
+      "fragile": false,
+      "risk_level": "low",
+      "pre_condition": {
+        "condition": "element_visible",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "textbox",
+                "name": "Password"
+              },
+              {
+                "method": "get_by_placeholder",
+                "value": "Password"
+              },
+              {
+                "method": "get_by_field_label",
+                "name": "Password"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 512,
+              "y": 482
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "Password textbox below the Username field on the login form."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      },
+      "locators": {
+        "primary": {
+          "strategy": "accessibility_tree",
+          "methods": [
+            {
+              "method": "get_by_role",
+              "role": "textbox",
+              "name": "Password"
+            },
+            {
+              "method": "get_by_placeholder",
+              "value": "Password"
+            },
+            {
+              "method": "get_by_field_label",
+              "name": "Password"
+            }
+          ],
+          "available": true
+        },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": {
+            "x": 512,
+            "y": 482
+          },
+          "scroll_y": 0,
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "visual_description": "Password textbox below the Username field on the login form."
+        }
+      },
+      "value": "{{auth_password}}",
+      "post_condition": {
+        "condition": "element_has_value",
+        "value": "{{auth_password}}",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "textbox",
+                "name": "Password"
+              },
+              {
+                "method": "get_by_placeholder",
+                "value": "Password"
+              },
+              {
+                "method": "get_by_field_label",
+                "name": "Password"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 512,
+              "y": 482
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "Password textbox below the Username field on the login form."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      }
+    },
+    {
+      "step_id": 4,
+      "action": "click",
+      "description": "Both username and password fields are filled. Next step is to click the Login button to submit credentials.",
+      "fragile": false,
+      "risk_level": "low",
+      "pre_condition": {
+        "condition": "element_visible",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "button",
+                "name": "Login"
+              },
+              {
+                "method": "get_by_text",
+                "value": "Login",
+                "nth": 0
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 512,
+              "y": 559
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "Blue 'Login' button below the password field on the login form."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      },
+      "locators": {
+        "primary": {
+          "strategy": "accessibility_tree",
+          "methods": [
+            {
+              "method": "get_by_role",
+              "role": "button",
+              "name": "Login"
+            },
+            {
+              "method": "get_by_text",
+              "value": "Login",
+              "nth": 0
+            }
+          ],
+          "available": true
+        },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": {
+            "x": 512,
+            "y": 559
+          },
+          "scroll_y": 0,
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "visual_description": "Blue 'Login' button below the password field on the login form."
+        }
+      },
+      "post_condition": {
+        "condition": "url_contains",
+        "value": "dashboard",
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      }
+    },
+    {
+      "step_id": 5,
+      "action": "click",
+      "description": "Login successful, now navigate to PIM module to search for the employee.",
+      "fragile": false,
+      "risk_level": "safe",
+      "pre_condition": {
+        "condition": "element_visible",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "link",
+                "name": "PIM"
+              },
+              {
+                "method": "get_by_text",
+                "value": "PIM"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 123,
+              "y": 214
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "Sidebar navigation link labeled 'PIM' in the left menu list."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      },
+      "locators": {
+        "primary": {
+          "strategy": "accessibility_tree",
+          "methods": [
+            {
+              "method": "get_by_role",
+              "role": "link",
+              "name": "PIM"
+            },
+            {
+              "method": "get_by_text",
+              "value": "PIM"
+            }
+          ],
+          "available": true
+        },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": {
+            "x": 123,
+            "y": 214
+          },
+          "scroll_y": 0,
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "visual_description": "Sidebar navigation link labeled 'PIM' in the left menu list."
+        }
+      },
+      "post_condition": {
+        "condition": "url_contains",
+        "value": "viewEmployeeList",
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      }
+    },
+    {
+      "step_id": 6,
+      "action": "fill",
+      "description": "Fill the Employee Name typeahead field with the employee_name parameter to search for the specific employee.",
+      "fragile": false,
+      "risk_level": "low",
+      "pre_condition": {
+        "condition": "element_visible",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_field_label",
+                "name": "Employee Name"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 429,
+              "y": 266
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "Text input labeled 'Employee Name' with placeholder 'Type for hints...' near top of the search form in PIM Employee List page."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      },
+      "locators": {
+        "primary": {
+          "strategy": "accessibility_tree",
+          "methods": [
+            {
+              "method": "get_by_field_label",
+              "name": "Employee Name"
+            }
+          ],
+          "available": true
+        },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": {
+            "x": 429,
+            "y": 266
+          },
+          "scroll_y": 0,
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "visual_description": "Text input labeled 'Employee Name' with placeholder 'Type for hints...' near top of the search form in PIM Employee List page."
+        }
+      },
+      "value": "{{employee_name}}",
+      "post_condition": {
+        "condition": "element_has_value",
+        "value": "{{employee_name}}",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_field_label",
+                "name": "Employee Name"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 429,
+              "y": 266
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "Text input labeled 'Employee Name' with placeholder 'Type for hints...' near top of the search form in PIM Employee List page."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      }
+    },
+    {
+      "step_id": 7,
+      "action": "click",
+      "description": "A typeahead dropdown appeared with suggestion 'Peter Mac Anderson' matching the employee name search. I need to click this option to select it before searching.",
+      "fragile": false,
+      "risk_level": "safe",
+      "pre_condition": {
+        "condition": "element_visible",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "option",
+                "name": "Peter Mac Anderson"
+              },
+              {
+                "method": "get_by_text",
+                "value": "Peter Mac Anderson"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 429,
+              "y": 316
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "A dropdown suggestion list below the Employee Name field showing 'Peter Mac Anderson' as a clickable option."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      },
+      "locators": {
+        "primary": {
+          "strategy": "accessibility_tree",
+          "methods": [
+            {
+              "method": "get_by_role",
+              "role": "option",
+              "name": "Peter Mac Anderson"
+            },
+            {
+              "method": "get_by_text",
+              "value": "Peter Mac Anderson"
+            }
+          ],
+          "available": true
+        },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": {
+            "x": 429,
+            "y": 316
+          },
+          "scroll_y": 0,
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "visual_description": "A dropdown suggestion list below the Employee Name field showing 'Peter Mac Anderson' as a clickable option."
+        }
+      },
+      "post_condition": {
+        "condition": "element_visible",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "option",
+                "name": "Peter Mac Anderson"
+              },
+              {
+                "method": "get_by_text",
+                "value": "Peter Mac Anderson"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 429,
+              "y": 316
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "A dropdown suggestion list below the Employee Name field showing 'Peter Mac Anderson' as a clickable option."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      }
+    },
+    {
+      "step_id": 8,
+      "action": "click",
+      "description": "The employee name field shows 'Peter Mac Anderson' selected from the typeahead, but the results table still shows all 181 records, meaning the search hasn't been executed yet. Click the Search button ",
+      "fragile": false,
+      "risk_level": "safe",
+      "pre_condition": {
+        "condition": "element_visible",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "button",
+                "name": "Search"
+              },
+              {
+                "method": "get_by_placeholder",
+                "value": "Search"
+              },
+              {
+                "method": "get_by_text",
+                "value": "Search"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 1142,
+              "y": 421
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "The blue 'Search' button located at the bottom of the search filter panel, to the right of the 'Reset' button."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      },
+      "locators": {
+        "primary": {
+          "strategy": "accessibility_tree",
+          "methods": [
+            {
+              "method": "get_by_role",
+              "role": "button",
+              "name": "Search"
+            },
+            {
+              "method": "get_by_placeholder",
+              "value": "Search"
+            },
+            {
+              "method": "get_by_text",
+              "value": "Search"
+            }
+          ],
+          "available": true
+        },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": {
+            "x": 1142,
+            "y": 421
+          },
+          "scroll_y": 0,
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "visual_description": "The blue 'Search' button located at the bottom of the search filter panel, to the right of the 'Reset' button."
+        }
+      },
+      "post_condition": {
+        "condition": "page_contains_text",
+        "value": "OrangeHRM, Inc",
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      }
+    },
+    {
+      "step_id": 9,
+      "action": "click",
+      "description": "The search has been executed and returned one matching employee, Peter Mac Anderson. Now I need to click on the employee's name link in the results row to open their profile.",
+      "fragile": false,
+      "risk_level": "safe",
+      "pre_condition": {
+        "condition": "element_visible",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "cell",
+                "name": "Peter Mac"
+              },
+              {
+                "method": "get_by_text",
+                "value": "Peter Mac"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 521,
+              "y": 722
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "The table row for employee 0007 Peter Mac Anderson, with the first/middle name 'Peter Mac' displayed as a clickable cell in the results table."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      },
+      "locators": {
+        "primary": {
+          "strategy": "accessibility_tree",
+          "methods": [
+            {
+              "method": "get_by_role",
+              "role": "cell",
+              "name": "Peter Mac"
+            },
+            {
+              "method": "get_by_text",
+              "value": "Peter Mac"
+            }
+          ],
+          "available": true
+        },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": {
+            "x": 521,
+            "y": 722
+          },
+          "scroll_y": 0,
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "visual_description": "The table row for employee 0007 Peter Mac Anderson, with the first/middle name 'Peter Mac' displayed as a clickable cell in the results table."
+        }
+      },
+      "post_condition": {
+        "condition": "url_contains",
+        "value": "viewPersonalDetails",
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      }
+    },
+    {
+      "step_id": 10,
+      "action": "extract",
+      "description": "The employee's Personal Details page is now open and displays the Date of Birth field with value 1975-08-10. Extract this value using the label associated with the Date of Birth textbox.",
+      "fragile": false,
+      "risk_level": "safe",
+      "extractions": [
+        {
+          "output_key": "date_of_birth",
+          "locators": {
+            "primary": {
+              "strategy": "accessibility_tree",
+              "methods": [
+                {
+                  "method": "get_by_field_label",
+                  "name": "Date of Birth"
+                }
+              ],
+              "available": true
+            },
+            "fallback": {
+              "strategy": "screenshot",
+              "coordinates": {
+                "x": 650,
+                "y": 637
+              },
+              "scroll_y": 0,
+              "viewport": {
+                "width": 1280,
+                "height": 720
+              },
+              "visual_description": "value for date_of_birth"
+            }
+          },
+          "extract_method": "get_value",
+          "expected_type": "string",
+          "required": true
+        }
+      ],
+      "post_condition": {
+        "condition": "all_extractions_non_empty",
+        "timeout_ms": 8000,
+        "on_fail": "hard_failure"
+      }
+    }
+  ],
+  "business_outcomes": [],
+  "error_map": {
+    "_default": {
+      "element_not_found": {
+        "category": "recoverable",
+        "action": "retry",
+        "max_retries": 3,
+        "retry_wait_ms": 1000,
+        "on_exhausted": "escalate_human",
+        "capture_screenshot": false
+      },
+      "checkpoint_failed": {
+        "category": "recoverable",
+        "action": "retry",
+        "max_retries": 2,
+        "retry_wait_ms": 1000,
+        "on_exhausted": "hard_failure",
+        "capture_screenshot": false
+      },
+      "timeout": {
+        "category": "recoverable",
+        "action": "retry",
+        "max_retries": 2,
+        "retry_wait_ms": 2000,
+        "on_exhausted": "escalate_human",
+        "capture_screenshot": false
+      },
+      "session_expired": {
+        "category": "recoverable",
+        "action": "re_login",
+        "max_retries": 1,
+        "retry_wait_ms": 0,
+        "on_exhausted": "escalate_human",
+        "capture_screenshot": false
+      },
+      "extraction_empty": {
+        "category": "hard_failure",
+        "action": "stop",
+        "capture_screenshot": true,
+        "message": "An expected value was not present on the page."
+      },
+      "wrong_page_state": {
+        "category": "hard_failure",
+        "action": "stop",
+        "capture_screenshot": true,
+        "message": "The page was not in the expected state."
+      }
+    }
+  },
+  "self_healing": {
+    "enabled": false
+  },
+  "provenance": {
+    "source_run_id": "discovery-20260820T085752-f9a7fa",
+    "model_id": "anthropic/claude-sonnet-5",
+    "steps_hash": "60e0d9a761fe2d87",
+    "notes": "Recorded by a live discovery run."
+  }
+}

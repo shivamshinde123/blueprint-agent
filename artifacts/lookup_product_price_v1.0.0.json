@@ -1,0 +1,584 @@
+{
+  "capability_id": "lookup_product_price",
+  "version": "1.0.0",
+  "schema_version": "1.0.0",
+  "description": "Log in to the store, open the product with the given name, and get its price and description.",
+  "recorded_by": "agent",
+  "created_at": "2026-08-20",
+  "surface_type": "modern_web",
+  "target": {
+    "app_name": "www",
+    "url": "https://www.saucedemo.com",
+    "surface_type": "modern_web"
+  },
+  "input_parameters": {
+    "product_name": {
+      "type": "string",
+      "required": true,
+      "sensitive": false
+    },
+    "auth_username": {
+      "type": "string",
+      "required": true,
+      "sensitive": true
+    },
+    "auth_password": {
+      "type": "string",
+      "required": true,
+      "sensitive": true
+    }
+  },
+  "output_schema": {
+    "description": "string",
+    "price": "currency"
+  },
+  "replay_config": {
+    "browser": {
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "device_scale_factor": 1,
+      "is_mobile": false,
+      "headless": false,
+      "locale": "en-US",
+      "timezone_id": "UTC",
+      "reduced_motion": "reduce",
+      "enforce_strictly": true
+    },
+    "mode": "strict",
+    "default_timeout_ms": 8000,
+    "interstitial_probe_timeout_ms": 250,
+    "max_retries_per_step": 3,
+    "retry_wait_ms": 1000,
+    "max_llm_calls_per_replay": 3
+  },
+  "known_interstitials": [],
+  "steps": [
+    {
+      "step_id": 1,
+      "action": "navigate",
+      "description": "Open https://www.saucedemo.com",
+      "fragile": false,
+      "risk_level": "safe",
+      "url": "https://www.saucedemo.com",
+      "post_condition": {
+        "condition": "url_contains",
+        "value": "www.saucedemo.com",
+        "timeout_ms": 8000,
+        "on_fail": "hard_failure"
+      }
+    },
+    {
+      "step_id": 2,
+      "action": "fill",
+      "description": "Start login process by filling the username field with the parameterized credential.",
+      "fragile": false,
+      "risk_level": "low",
+      "pre_condition": {
+        "condition": "element_visible",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "textbox",
+                "name": "Username"
+              },
+              {
+                "method": "get_by_placeholder",
+                "value": "Username"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 640,
+              "y": 173
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "Text input box labeled Username near the top of the login form."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      },
+      "locators": {
+        "primary": {
+          "strategy": "accessibility_tree",
+          "methods": [
+            {
+              "method": "get_by_role",
+              "role": "textbox",
+              "name": "Username"
+            },
+            {
+              "method": "get_by_placeholder",
+              "value": "Username"
+            }
+          ],
+          "available": true
+        },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": {
+            "x": 640,
+            "y": 173
+          },
+          "scroll_y": 0,
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "visual_description": "Text input box labeled Username near the top of the login form."
+        }
+      },
+      "value": "{{auth_username}}",
+      "post_condition": {
+        "condition": "element_has_value",
+        "value": "{{auth_username}}",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "textbox",
+                "name": "Username"
+              },
+              {
+                "method": "get_by_placeholder",
+                "value": "Username"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 640,
+              "y": 173
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "Text input box labeled Username near the top of the login form."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      }
+    },
+    {
+      "step_id": 3,
+      "action": "fill",
+      "description": "Username is filled; now fill the password field with the parameterized password before logging in.",
+      "fragile": false,
+      "risk_level": "low",
+      "pre_condition": {
+        "condition": "element_visible",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "textbox",
+                "name": "Password"
+              },
+              {
+                "method": "get_by_placeholder",
+                "value": "Password"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 640,
+              "y": 227
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "Password input field below the username field on the login form."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      },
+      "locators": {
+        "primary": {
+          "strategy": "accessibility_tree",
+          "methods": [
+            {
+              "method": "get_by_role",
+              "role": "textbox",
+              "name": "Password"
+            },
+            {
+              "method": "get_by_placeholder",
+              "value": "Password"
+            }
+          ],
+          "available": true
+        },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": {
+            "x": 640,
+            "y": 227
+          },
+          "scroll_y": 0,
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "visual_description": "Password input field below the username field on the login form."
+        }
+      },
+      "value": "{{auth_password}}",
+      "post_condition": {
+        "condition": "element_has_value",
+        "value": "{{auth_password}}",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "textbox",
+                "name": "Password"
+              },
+              {
+                "method": "get_by_placeholder",
+                "value": "Password"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 640,
+              "y": 227
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "Password input field below the username field on the login form."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      }
+    },
+    {
+      "step_id": 4,
+      "action": "click",
+      "description": "Both username and password fields are filled; now click the Login button to submit the form.",
+      "fragile": false,
+      "risk_level": "low",
+      "pre_condition": {
+        "condition": "element_visible",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "button",
+                "name": "Login"
+              },
+              {
+                "method": "get_by_text",
+                "value": "Login"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 640,
+              "y": 326
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "Blue 'Login' button below the password field on the login form."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      },
+      "locators": {
+        "primary": {
+          "strategy": "accessibility_tree",
+          "methods": [
+            {
+              "method": "get_by_role",
+              "role": "button",
+              "name": "Login"
+            },
+            {
+              "method": "get_by_text",
+              "value": "Login"
+            }
+          ],
+          "available": true
+        },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": {
+            "x": 640,
+            "y": 326
+          },
+          "scroll_y": 0,
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "visual_description": "Blue 'Login' button below the password field on the login form."
+        }
+      },
+      "post_condition": {
+        "condition": "page_contains_text",
+        "value": "Twitter",
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      }
+    },
+    {
+      "step_id": 5,
+      "action": "click",
+      "description": "Login succeeded and inventory page is shown. Now click the product link matching the parameterized product name to open its detail page.",
+      "fragile": false,
+      "risk_level": "safe",
+      "pre_condition": {
+        "condition": "element_visible",
+        "locators": {
+          "primary": {
+            "strategy": "accessibility_tree",
+            "methods": [
+              {
+                "method": "get_by_role",
+                "role": "link",
+                "name": "{{product_name}}",
+                "nth": 0
+              },
+              {
+                "method": "get_by_text",
+                "value": "{{product_name}}"
+              }
+            ],
+            "available": true
+          },
+          "fallback": {
+            "strategy": "screenshot",
+            "coordinates": {
+              "x": 178,
+              "y": 274
+            },
+            "scroll_y": 0,
+            "viewport": {
+              "width": 1280,
+              "height": 720
+            },
+            "visual_description": "The product title link in the inventory list, displayed as blue text under the product image, matching the given product name."
+          }
+        },
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      },
+      "locators": {
+        "primary": {
+          "strategy": "accessibility_tree",
+          "methods": [
+            {
+              "method": "get_by_role",
+              "role": "link",
+              "name": "{{product_name}}",
+              "nth": 0
+            },
+            {
+              "method": "get_by_text",
+              "value": "{{product_name}}"
+            }
+          ],
+          "available": true
+        },
+        "fallback": {
+          "strategy": "screenshot",
+          "coordinates": {
+            "x": 178,
+            "y": 274
+          },
+          "scroll_y": 0,
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "visual_description": "The product title link in the inventory list, displayed as blue text under the product image, matching the given product name."
+        }
+      },
+      "post_condition": {
+        "condition": "page_contains_text",
+        "value": "Go back",
+        "timeout_ms": 8000,
+        "on_fail": "retry"
+      }
+    },
+    {
+      "step_id": 6,
+      "action": "extract",
+      "description": "The description and price live in separate DOM elements (inventory_details_desc and inventory_details_price) even though the accessibility snapshot merges their text with the product name. I'll target",
+      "fragile": false,
+      "risk_level": "safe",
+      "extractions": [
+        {
+          "output_key": "description",
+          "locators": {
+            "primary": {
+              "strategy": "accessibility_tree",
+              "methods": [
+                {
+                  "method": "get_by_text",
+                  "pattern": "^[A-Za-z\\(].{20,}\\.$"
+                }
+              ],
+              "available": true
+            },
+            "fallback": {
+              "strategy": "screenshot",
+              "coordinates": {
+                "x": 760,
+                "y": 234
+              },
+              "scroll_y": 0,
+              "viewport": {
+                "width": 1280,
+                "height": 720
+              },
+              "visual_description": "value for description"
+            }
+          },
+          "extract_method": "text_content",
+          "expected_type": "string",
+          "required": true
+        },
+        {
+          "output_key": "price",
+          "locators": {
+            "primary": {
+              "strategy": "accessibility_tree",
+              "methods": [
+                {
+                  "method": "get_by_text",
+                  "pattern": "\\$[\\d,.]+"
+                }
+              ],
+              "available": true
+            },
+            "fallback": {
+              "strategy": "screenshot",
+              "coordinates": {
+                "x": 566,
+                "y": 307
+              },
+              "scroll_y": 0,
+              "viewport": {
+                "width": 1280,
+                "height": 720
+              },
+              "visual_description": "value for price"
+            }
+          },
+          "extract_method": "text_content",
+          "expected_type": "currency",
+          "required": true,
+          "pattern": "\\$[\\d,.]+"
+        }
+      ],
+      "post_condition": {
+        "condition": "all_extractions_non_empty",
+        "timeout_ms": 8000,
+        "on_fail": "hard_failure"
+      }
+    }
+  ],
+  "business_outcomes": [],
+  "error_map": {
+    "_default": {
+      "element_not_found": {
+        "category": "recoverable",
+        "action": "retry",
+        "max_retries": 3,
+        "retry_wait_ms": 1000,
+        "on_exhausted": "escalate_human",
+        "capture_screenshot": false
+      },
+      "checkpoint_failed": {
+        "category": "recoverable",
+        "action": "retry",
+        "max_retries": 2,
+        "retry_wait_ms": 1000,
+        "on_exhausted": "hard_failure",
+        "capture_screenshot": false
+      },
+      "timeout": {
+        "category": "recoverable",
+        "action": "retry",
+        "max_retries": 2,
+        "retry_wait_ms": 2000,
+        "on_exhausted": "escalate_human",
+        "capture_screenshot": false
+      },
+      "session_expired": {
+        "category": "recoverable",
+        "action": "re_login",
+        "max_retries": 1,
+        "retry_wait_ms": 0,
+        "on_exhausted": "escalate_human",
+        "capture_screenshot": false
+      },
+      "extraction_empty": {
+        "category": "hard_failure",
+        "action": "stop",
+        "capture_screenshot": true,
+        "message": "An expected value was not present on the page."
+      },
+      "wrong_page_state": {
+        "category": "hard_failure",
+        "action": "stop",
+        "capture_screenshot": true,
+        "message": "The page was not in the expected state."
+      }
+    }
+  },
+  "self_healing": {
+    "enabled": false
+  },
+  "provenance": {
+    "source_run_id": "discovery-20260820T184551-80e769",
+    "model_id": "anthropic/claude-sonnet-5",
+    "steps_hash": "80cd996d80fbff99",
+    "notes": "Recorded by a live discovery run."
+  }
+}

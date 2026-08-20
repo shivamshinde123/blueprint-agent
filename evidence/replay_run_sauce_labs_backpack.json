@@ -1,0 +1,151 @@
+{
+  "run_id": "replay-20260820T190100-0431c6",
+  "capability_id": "lookup_product_price",
+  "phase": "replay",
+  "mode": "strict",
+  "target_url": "https://www.saucedemo.com",
+  "started_at": "2026-08-20T19:01:00.452+00:00",
+  "finished_at": "2026-08-20T19:01:04.604+00:00",
+  "duration_ms": 4152,
+  "result_type": "success",
+  "params": {
+    "product_name": "Sauce Labs Backpack",
+    "auth_username": "***REDACTED***",
+    "auth_password": "***REDACTED***"
+  },
+  "browser": {
+    "viewport_width": 1280,
+    "viewport_height": 720,
+    "device_scale_factor": 1,
+    "locale": "en-US",
+    "timezone_id": "UTC",
+    "is_mobile": false,
+    "headless": false
+  },
+  "steps_completed": 6,
+  "layer2_used": false,
+  "llm_calls_made": 0,
+  "steps": [
+    {
+      "step_id": 1,
+      "action": "navigate",
+      "description": "Open https://www.saucedemo.com",
+      "timestamp": "2026-08-20T19:01:03.097+00:00",
+      "layer_used": null,
+      "locator_used": null,
+      "pre_condition": "skipped",
+      "post_condition": "passed",
+      "outcome": "ok",
+      "duration_ms": 547,
+      "retries": 0,
+      "notes": null
+    },
+    {
+      "step_id": 2,
+      "action": "fill",
+      "description": "Start login process by filling the username field with the parameterized credential.",
+      "timestamp": "2026-08-20T19:01:03.660+00:00",
+      "layer_used": "accessibility_tree",
+      "locator_used": {
+        "method": "get_by_role",
+        "role": "textbox",
+        "name": "Username",
+        "value": null,
+        "nth": null
+      },
+      "pre_condition": "passed",
+      "post_condition": "passed",
+      "outcome": "ok",
+      "duration_ms": 328,
+      "retries": 0,
+      "notes": null
+    },
+    {
+      "step_id": 3,
+      "action": "fill",
+      "description": "Username is filled; now fill the password field with the parameterized password before logging in.",
+      "timestamp": "2026-08-20T19:01:03.997+00:00",
+      "layer_used": "accessibility_tree",
+      "locator_used": {
+        "method": "get_by_role",
+        "role": "textbox",
+        "name": "Password",
+        "value": null,
+        "nth": null
+      },
+      "pre_condition": "passed",
+      "post_condition": "passed",
+      "outcome": "ok",
+      "duration_ms": 108,
+      "retries": 0,
+      "notes": null
+    },
+    {
+      "step_id": 4,
+      "action": "click",
+      "description": "Both username and password fields are filled; now click the Login button to submit the form.",
+      "timestamp": "2026-08-20T19:01:04.100+00:00",
+      "layer_used": "accessibility_tree",
+      "locator_used": {
+        "method": "get_by_role",
+        "role": "button",
+        "name": "Login",
+        "value": null,
+        "nth": null
+      },
+      "pre_condition": "passed",
+      "post_condition": "passed",
+      "outcome": "ok",
+      "duration_ms": 234,
+      "retries": 0,
+      "notes": null
+    },
+    {
+      "step_id": 5,
+      "action": "click",
+      "description": "Login succeeded and inventory page is shown. Now click the product link matching the parameterized product name to open its detail page.",
+      "timestamp": "2026-08-20T19:01:04.337+00:00",
+      "layer_used": "accessibility_tree",
+      "locator_used": {
+        "method": "get_by_role",
+        "role": "link",
+        "name": "Sauce Labs Backpack",
+        "value": null,
+        "nth": 0
+      },
+      "pre_condition": "passed",
+      "post_condition": "passed",
+      "outcome": "ok",
+      "duration_ms": 202,
+      "retries": 0,
+      "notes": null
+    },
+    {
+      "step_id": 6,
+      "action": "extract",
+      "description": "The description and price live in separate DOM elements (inventory_details_desc and inventory_details_price) even though the accessibility snapshot merges their text with the product name. I'll target",
+      "timestamp": "2026-08-20T19:01:04.547+00:00",
+      "layer_used": null,
+      "locator_used": null,
+      "pre_condition": "skipped",
+      "post_condition": "passed",
+      "outcome": "ok",
+      "duration_ms": 62,
+      "retries": 0,
+      "notes": null
+    }
+  ],
+  "llm_calls": [],
+  "interventions": [],
+  "outputs": {
+    "description": "carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequaled laptop and tablet protection.",
+    "price": {
+      "raw": "$29.99",
+      "normalized": "29.99"
+    }
+  },
+  "evidence": {
+    "screenshot": null,
+    "dom_snapshot": null
+  }
+}

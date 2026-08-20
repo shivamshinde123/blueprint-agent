@@ -102,7 +102,20 @@ async def _test_once(
 
         if kind is ConditionType.PAGE_CONTAINS_TEXT:
             body = await _body_text(session)
-            return value.lower() in body.lower(), _excerpt(body, value)
+            if value.lower() in body.lower():
+                return True, _excerpt(body, value)
+            # Not in the visible text -- but checkpoints are synthesised from
+            # the accessibility snapshot, where an accessible name can come
+            # from an alt attribute or an aria-label that never renders. A real
+            # recording asserted "Go back" on a page whose button *reads* "Back
+            # to products", and the checkpoint failed against body text alone
+            # even though the page was exactly right.
+            #
+            # Both are honest presentations of the page, so both count.
+            names = await _accessible_names(session)
+            if value.lower() in names.lower():
+                return True, "present as an accessible name"
+            return False, _excerpt(body, value)
 
         if kind is ConditionType.ELEMENT_VISIBLE:
             if condition.locators is None:  # pragma: no cover - schema-guarded
@@ -144,6 +157,18 @@ async def _test_once(
         return False, f"error while evaluating: {exc}"
 
     return False, f"unsupported condition {kind}"  # pragma: no cover
+
+
+async def _accessible_names(session: Session) -> str:
+    """The page as the accessibility tree presents it.
+
+    Deliberately the same source discovery synthesises checkpoints from, so a
+    checkpoint that was observable at record time is verifiable at replay time.
+    """
+    try:
+        return await session.page.locator("body").aria_snapshot()
+    except Exception:
+        return ""
 
 
 async def _body_text(session: Session) -> str:

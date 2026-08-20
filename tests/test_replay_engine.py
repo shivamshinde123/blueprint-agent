@@ -386,3 +386,62 @@ async def test_evidence_log_is_json_serialisable(tmp_path):
     data = json.loads(path.read_text(encoding="utf-8"))
     assert data["capability_id"] == "lookup_employee"
     assert data["steps_completed"] == 4
+
+
+# --------------------------------------------------------------------------
+# Checkpoints must be verifiable from the same view they were recorded from
+# --------------------------------------------------------------------------
+
+
+async def test_checkpoint_matches_an_accessible_name():
+    """Discovery reads the accessibility snapshot; replay must accept it.
+
+    A real recording asserted "Go back" after opening a product, taken from an
+    image's alt text. The button *reads* "Back to products", so verifying
+    against visible body text alone failed a step that had worked perfectly.
+    """
+    from src.artifact.schema import Condition, ConditionType
+    from src.replay.conditions import evaluate
+
+    page_html = """
+    <!doctype html><html><body>
+      <button><img alt="Go back"><span>Back to products</span></button>
+    </body></html>
+    """
+    async with browser_session(BrowserConfig(headless=True)) as session:
+        await session.page.set_content(page_html)
+
+        visible = await evaluate(
+            session,
+            Condition(condition=ConditionType.PAGE_CONTAINS_TEXT, value="Back to products"),
+            {},
+            default_timeout_ms=1000,
+        )
+        assert visible.passed
+
+        alt_only = await evaluate(
+            session,
+            Condition(condition=ConditionType.PAGE_CONTAINS_TEXT, value="Go back"),
+            {},
+            default_timeout_ms=1000,
+        )
+        assert alt_only.passed, (
+            "an accessible name is a legitimate presentation of the page, and "
+            "is where discovery takes its checkpoints from"
+        )
+
+
+async def test_absent_text_still_fails():
+    """The relaxation must not turn the checkpoint into a no-op."""
+    from src.artifact.schema import Condition, ConditionType
+    from src.replay.conditions import evaluate
+
+    async with browser_session(BrowserConfig(headless=True)) as session:
+        await session.page.set_content("<html><body><p>hello</p></body></html>")
+        result = await evaluate(
+            session,
+            Condition(condition=ConditionType.PAGE_CONTAINS_TEXT, value="definitely not here"),
+            {},
+            default_timeout_ms=500,
+        )
+        assert not result.passed
