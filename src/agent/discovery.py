@@ -735,6 +735,7 @@ class DiscoveryAgent:
         timeout: int,
         action: ActionType | None = None,
         extract_method: str | None = None,
+        pattern: str | None = None,
     ) -> list[AccessibilityLocatorMethod]:
         """Keep the candidates that resolve *and* suit the action.
 
@@ -757,6 +758,21 @@ class DiscoveryAgent:
                 continue
             if not await self._suits_action(resolved.locator, action, extract_method):
                 continue
+
+            # When a pattern says what shape the value has, use it to pick
+            # between elements that share a name. A product page exposes the
+            # product's name twice -- once as an image's alt text, once inside
+            # the block that also holds the price -- and only one of them can
+            # satisfy the pattern. Selecting by shape is not selecting by this
+            # run's data, so the reusability rule still holds.
+            if pattern:
+                index = await self._index_matching_pattern(
+                    session, method, params, pattern, extract_method, timeout
+                )
+                if index is None:
+                    continue
+                if index > 0:
+                    method = method.model_copy(update={"nth": index})
             # Bake in which match was taken when the name was ambiguous, so
             # replay picks the same element rather than re-guessing.
             index = (resolved.detail or {}).get("nth")
@@ -764,6 +780,40 @@ class DiscoveryAgent:
                 method = method.model_copy(update={"nth": index})
             working.append(method)
         return working
+
+    async def _index_matching_pattern(
+        self,
+        session: Session,
+        method: AccessibilityLocatorMethod,
+        params: dict[str, Any],
+        pattern: str,
+        extract_method: str | None,
+        timeout: int,
+    ) -> int | None:
+        """Which of the matching elements actually contains the value's shape?"""
+        import re as _re
+
+        try:
+            candidate = loc.build_playwright_locator(session.page, method, params)
+            count = min(await candidate.count(), 10)
+        except Exception:
+            return None
+
+        for index in range(count):
+            try:
+                element = candidate.nth(index)
+                if not await element.is_visible():
+                    continue
+                text = (
+                    await element.input_value()
+                    if extract_method == ExtractMethod.GET_VALUE.value
+                    else await element.inner_text()
+                )
+                if _re.search(pattern, text or "", _re.DOTALL):
+                    return index
+            except Exception:
+                continue
+        return None
 
     @staticmethod
     async def _suits_action(
@@ -1079,6 +1129,7 @@ class DiscoveryAgent:
                 timeout,
                 action=ActionType.EXTRACT,
                 extract_method=proposed.extract_method,
+                pattern=proposed.pattern,
             )
             if not working:
                 raise DiscoveryError(
