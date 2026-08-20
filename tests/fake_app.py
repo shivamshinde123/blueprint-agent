@@ -79,3 +79,65 @@ async def serve(page: Page, pages: dict[str, str] | None = None) -> None:
         await route.fulfill(status=200, content_type="text/html", body=body)
 
     await page.route("**/*", handler)
+
+
+# --------------------------------------------------------------------------
+# A tiny store, for testing that an artifact works with inputs it never saw
+# --------------------------------------------------------------------------
+#
+# Two products with different prices. An artifact recorded against one must
+# return the *other's* price when replayed with the other's name -- which is
+# the property the whole system exists to deliver, and the one that no amount
+# of schema validation can establish.
+
+CATALOGUE = {
+    "Widget": ("$29.99", "A sturdy widget for everyday use."),
+    "Gizmo": ("$9.99", "A compact gizmo that fits in a pocket."),
+}
+
+STORE_LIST = """
+<!doctype html><html><body>
+  <h1>Catalogue</h1>
+  <ul>
+    <li><a href="/mock/item?name=Widget">Widget</a></li>
+    <li><a href="/mock/item?name=Gizmo">Gizmo</a></li>
+  </ul>
+</body></html>
+"""
+
+
+def _item_page(name: str) -> str:
+    price, description = CATALOGUE.get(name, ("", ""))
+    if not price:
+        return "<!doctype html><html><body><h1>No such product</h1></body></html>"
+    return f"""
+<!doctype html><html><body>
+  <h1>{name}</h1>
+  <div class="detail">
+    <label for="price">Price</label><input id="price" value="{price}" readonly>
+    <label for="desc">Description</label><input id="desc" value="{description}" readonly>
+  </div>
+  <a href="/mock/store">Back to catalogue</a>
+</body></html>
+"""
+
+
+async def serve_store(page: Page) -> None:
+    """Serve the catalogue, with per-product detail pages."""
+
+    async def handler(route, request):  # type: ignore[no-untyped-def]
+        url = request.url
+        path = url.split("localhost:8081", 1)[-1]
+        if path.startswith("/mock/item"):
+            name = ""
+            if "name=" in path:
+                name = path.split("name=", 1)[1].split("&")[0].replace("%20", " ")
+            body = _item_page(name)
+        elif path.startswith("/mock/store"):
+            body = STORE_LIST
+        else:
+            await route.fulfill(status=404, content_type="text/html", body="<h1>404</h1>")
+            return
+        await route.fulfill(status=200, content_type="text/html", body=body)
+
+    await page.route("**/*", handler)

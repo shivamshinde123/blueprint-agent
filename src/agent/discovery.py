@@ -34,6 +34,7 @@ from src import settings
 from src.agent import prompts
 from src.agent.decisions import AgentDecision, DecisionAction, ProposedLocator
 from src.agent.observation import Change, Observation, diff, distinctive_new_text, observe
+from src.artifact.reusability import assert_reusable, embeds
 from src.artifact.schema import (
     AccessibilityLocatorMethod,
     AccessibilityMethod,
@@ -113,6 +114,9 @@ class _Recorder:
     steps: list[Step] = field(default_factory=list)
     output_schema: dict[str, ExpectedType] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
+    #: What the extractions actually returned this run. Held in memory only --
+    #: never written to the artifact, since these are real record values.
+    recorded_outputs: dict[str, str] = field(default_factory=dict)
     #: Did the most recent step visibly change the page? A step that executed
     #: cleanly but changed nothing is not progress -- see the dead-end note in
     #: DiscoveryAgent.run.
@@ -338,20 +342,18 @@ def _action_type(action: DecisionAction) -> ActionType | None:
 def _locator_echoes_value(
     methods: list[AccessibilityLocatorMethod], value: str
 ) -> bool:
-    """Does this locator find the element by the very text it is reading?"""
-    target = value.strip().lower()
-    if len(target) < 2:
-        return False
-    for method in methods:
-        for text in (method.name, method.value):
-            if not text:
-                continue
-            candidate = text.strip().lower()
-            if len(candidate) < 2:
-                continue
-            if candidate == target or candidate in target or target in candidate:
-                return True
-    return False
+    """Does this locator find the element by the very text it is reading?
+
+    Delegates to the shared predicate so the rule has one definition. This is
+    the fast-feedback half: catching it here lets the model pick a different
+    locator while it still has the page in front of it, rather than failing the
+    whole recording at assembly.
+    """
+    return any(
+        embeds(text, value)
+        for method in methods
+        for text in (method.name, method.value)
+    )
 
 
 def _param_values(params: dict[str, Any]) -> set[str]:
@@ -1040,6 +1042,7 @@ class DiscoveryAgent:
         # produces. The artifact validator catches that -- at the very end of an
         # otherwise complete run.
         staged_schema: dict[str, ExpectedType] = {}
+        staged_outputs: dict[str, str] = {}
         for proposed in fresh:
             working = await self._working_methods(
                 session,
@@ -1104,9 +1107,11 @@ class DiscoveryAgent:
                 )
             )
             staged_schema[proposed.output_key] = expected
+            staged_outputs[proposed.output_key] = value
 
         # Every extraction resolved and returned a value: commit the schema.
         recorder.output_schema.update(staged_schema)
+        recorder.recorded_outputs.update(staged_outputs)
 
         return Step(
             step_id=recorder.next_step_id(),
@@ -1158,7 +1163,7 @@ class DiscoveryAgent:
             ).encode()
         ).hexdigest()[:16]
 
-        return Artifact(
+        artifact = Artifact(
             capability_id=capability_id,
             version="1.0.0",
             schema_version="1.0.0",
@@ -1186,6 +1191,18 @@ class DiscoveryAgent:
                 notes="Recorded by a live discovery run.",
             ),
         )
+
+        # The backstop. Everything above can be individually valid while the
+        # recording as a whole only works for the input it just saw, and
+        # nothing else in the system would notice -- replay would succeed and
+        # return this run's answer forever. Checked here with the values still
+        # in memory, so none of them has to be written down.
+        assert_reusable(
+            artifact,
+            {**recorder.params, **recorder.recorded_outputs},
+            sensitive=artifact.sensitive_parameters(),
+        )
+        return artifact
 
 
 # --------------------------------------------------------------------------
