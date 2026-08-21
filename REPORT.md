@@ -5,10 +5,10 @@ Design write-up for the computer-use automation take-home.
 > **The model discovers. The artifact becomes a reusable capability. Deterministic
 > replay is how the agent invokes it in production.**
 
-**Repo:** <https://github.com/shivamshinde123/blueprint-agent>
-**Targets:** saucedemo.com (modern web), demo.guru99.com (legacy web)
-**Model:** `anthropic/claude-sonnet-5` via OpenRouter
-**Tests:** 346 passing, lint clean
+**Repo:** <https://github.com/shivamshinde123/blueprint-agent>  
+**Targets:** saucedemo.com (modern web), demo.guru99.com (legacy web)  
+**Model:** `anthropic/claude-sonnet-5` via OpenRouter  
+**Tests:** 346 passing, lint clean  
 
 Every claim in this report is backed by a committed evidence file or a test.
 Where something is designed but not demonstrated, it says so.
@@ -64,16 +64,43 @@ flowchart LR
     ART --> VAL
 ```
 
-### Why the boundary sits there
+### Why the model only runs once
 
-A system that keeps a model in the production path inherits its latency, its
-cost, and its variance on every single call. Freezing the successful run into a
-typed artifact turns a probabilistic capability into a deterministic one. That
-is the only way an agent can call it a thousand times a day and trust the
-result.
+The key design question is: **how often does the model run?**
 
-The artifact is the seam. Everything before it is allowed to be
-non-deterministic. Nothing after it is.
+There are two ways to build a system like this.
+
+**Option A: the model runs every time.** Someone asks for a product price, and
+the model opens the browser, looks at the page, and works out what to click,
+from scratch, every single time.
+
+**Option B: the model runs once.** It works out the flow one time, and that
+flow is saved. Every use after that just follows the saved steps.
+
+This project does Option B, and here are the real numbers from the runs in this
+repository:
+
+| | Model runs every time | Model runs once (this project) |
+|---|---|---|
+| Time per use | Minutes | **8.7 seconds** |
+| Model calls per use | 7 or more | **0** |
+| Cost per use | Paid every time | Paid once, ever |
+| Same input, same result? | Not guaranteed | **Yes, verified twice** |
+
+The third row is a business problem and the fourth is a correctness problem. A
+model can reasonably pick a different route through the same website on two
+different days. Both routes might work. But if a bank is running this a thousand
+times a day, "it usually works" is not good enough, and "it did something
+slightly different today" is impossible to debug.
+
+So the model is used for the thing it is genuinely good at, which is *working
+out* how an unfamiliar website behaves. Then its answer is written down and the
+model is taken out of the loop.
+
+**Where the two halves meet is the artifact.** Discovery is allowed to be
+unpredictable, because a person reviews what it produced before anyone relies on
+it. Replay is not allowed to be unpredictable, because nobody is watching it
+run.
 
 ### What has been demonstrated
 
