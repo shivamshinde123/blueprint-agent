@@ -1,12 +1,12 @@
 {
-  "run_id": "replay-20260820T190100-0431c6",
+  "run_id": "replay-20260821T004615-2ce8d8",
   "capability_id": "lookup_product_price",
   "phase": "replay",
   "mode": "strict",
   "target_url": "https://www.saucedemo.com",
-  "started_at": "2026-08-20T19:01:00.452+00:00",
-  "finished_at": "2026-08-20T19:01:04.604+00:00",
-  "duration_ms": 4152,
+  "started_at": "2026-08-21T00:46:15.509+00:00",
+  "finished_at": "2026-08-21T00:46:18.736+00:00",
+  "duration_ms": 3227,
   "result_type": "success",
   "params": {
     "product_name": "Sauce Labs Backpack",
@@ -30,13 +30,13 @@
       "step_id": 1,
       "action": "navigate",
       "description": "Open https://www.saucedemo.com",
-      "timestamp": "2026-08-20T19:01:03.097+00:00",
+      "timestamp": "2026-08-21T00:46:17.751+00:00",
       "layer_used": null,
       "locator_used": null,
       "pre_condition": "skipped",
       "post_condition": "passed",
       "outcome": "ok",
-      "duration_ms": 547,
+      "duration_ms": 515,
       "retries": 0,
       "notes": null
     },
@@ -44,7 +44,7 @@
       "step_id": 2,
       "action": "fill",
       "description": "Start login process by filling the username field with the parameterized credential.",
-      "timestamp": "2026-08-20T19:01:03.660+00:00",
+      "timestamp": "2026-08-21T00:46:18.263+00:00",
       "layer_used": "accessibility_tree",
       "locator_used": {
         "method": "get_by_role",
@@ -56,7 +56,7 @@
       "pre_condition": "passed",
       "post_condition": "passed",
       "outcome": "ok",
-      "duration_ms": 328,
+      "duration_ms": 140,
       "retries": 0,
       "notes": null
     },
@@ -64,7 +64,7 @@
       "step_id": 3,
       "action": "fill",
       "description": "Username is filled; now fill the password field with the parameterized password before logging in.",
-      "timestamp": "2026-08-20T19:01:03.997+00:00",
+      "timestamp": "2026-08-21T00:46:18.401+00:00",
       "layer_used": "accessibility_tree",
       "locator_used": {
         "method": "get_by_role",
@@ -76,7 +76,7 @@
       "pre_condition": "passed",
       "post_condition": "passed",
       "outcome": "ok",
-      "duration_ms": 108,
+      "duration_ms": 47,
       "retries": 0,
       "notes": null
     },
@@ -84,7 +84,7 @@
       "step_id": 4,
       "action": "click",
       "description": "Both username and password fields are filled; now click the Login button to submit the form.",
-      "timestamp": "2026-08-20T19:01:04.100+00:00",
+      "timestamp": "2026-08-21T00:46:18.443+00:00",
       "layer_used": "accessibility_tree",
       "locator_used": {
         "method": "get_by_role",
@@ -96,7 +96,7 @@
       "pre_condition": "passed",
       "post_condition": "passed",
       "outcome": "ok",
-      "duration_ms": 234,
+      "duration_ms": 140,
       "retries": 0,
       "notes": null
     },
@@ -104,7 +104,7 @@
       "step_id": 5,
       "action": "click",
       "description": "Login succeeded and inventory page is shown. Now click the product link matching the parameterized product name to open its detail page.",
-      "timestamp": "2026-08-20T19:01:04.337+00:00",
+      "timestamp": "2026-08-21T00:46:18.589+00:00",
       "layer_used": "accessibility_tree",
       "locator_used": {
         "method": "get_by_role",
@@ -116,7 +116,7 @@
       "pre_condition": "passed",
       "post_condition": "passed",
       "outcome": "ok",
-      "duration_ms": 202,
+      "duration_ms": 109,
       "retries": 0,
       "notes": null
     },
@@ -124,13 +124,13 @@
       "step_id": 6,
       "action": "extract",
       "description": "The description and price live in separate DOM elements (inventory_details_desc and inventory_details_price) even though the accessibility snapshot merges their text with the product name. I'll target",
-      "timestamp": "2026-08-20T19:01:04.547+00:00",
+      "timestamp": "2026-08-21T00:46:18.700+00:00",
       "layer_used": null,
       "locator_used": null,
       "pre_condition": "skipped",
       "post_condition": "passed",
       "outcome": "ok",
-      "duration_ms": 62,
+      "duration_ms": 30,
       "retries": 0,
       "notes": null
     }
@@ -145,7 +145,7 @@
     }
   },
   "evidence": {
-    "screenshot": null,
+    "screenshot": "evidence\\screenshots\\replay-20260821T004615-2ce8d8_final.png",
     "dom_snapshot": null
   }
 }

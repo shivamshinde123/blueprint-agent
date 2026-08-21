@@ -34,8 +34,12 @@ test-results/
 *.zip
 
 # ---- Evidence ----
-# Screenshots can capture on-screen PII; logs are committed, images are not.
-evidence/screenshots/
+# Artifacts, run logs and the curated screenshots are all deliverables and are
+# committed. The targets are public demo sites with no real customer data, so
+# the PII concern that would apply to a real banking surface does not apply
+# here. On such a surface the screenshots would stay out, because a failure
+# screenshot captures whatever is on screen and redaction cannot reach inside
+# a PNG.
 # Self-healing sidecar patches are run artifacts, not source (PLAN.md C8)
 artifacts/heal/
 

@@ -874,12 +874,33 @@ async def replay(
             )
             result = await engine.run(session, params, run_log)
 
+            # A failure already captured its own screenshot at the moment it
+            # broke. A success captured nothing, which left the strongest runs
+            # in the evidence folder with no picture of what they achieved.
+            if run_log.screenshot is None:
+                run_log.screenshot = await _capture_final(session, run_log.run_id)
+
             if handoff:
                 for record in handoff.interventions:
                     run_log.record_intervention(_as_intervention_log(record))
 
     run_log.write(settings.EVIDENCE_DIR / f"{run_log.run_id}.json")
     return result, run_log
+
+
+async def _capture_final(session: Session, run_id: str) -> str | None:
+    """Save what the screen looked like when the run finished.
+
+    Best effort. Losing a screenshot must never turn a successful replay into
+    a failed one.
+    """
+    try:
+        settings.ensure_dirs()
+        path = settings.SCREENSHOTS_DIR / f"{run_id}_final.png"
+        path.write_bytes(await session.screenshot())
+        return str(path.relative_to(settings.ROOT))
+    except Exception:
+        return None
 
 
 @asynccontextmanager

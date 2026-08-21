@@ -230,30 +230,6 @@ work, and it did (sections 5 and 8).
 Models are reached through **OpenRouter**, an OpenAI-compatible gateway, so
 trying a different model is a config change rather than a rewrite:
 
-```bash
-BLUEPRINT_MODEL=google/gemini-3-pro uv run python main.py discover ...
-```
-
-Nothing outside `src/llm/` imports a provider SDK.
-
-Routing is **pinned** to one upstream provider, with gateway fallback turned
-off. A gateway quietly switching providers mid-run is the wrong failure mode for
-a system built on reproducibility: two runs of the same configuration could be
-served by different infrastructure. The serving provider and the generation id
-are recorded for every call, so any discovery run can be traced afterwards.
-
-### Trade-offs taken
-
-| Decision | Cost | Why anyway |
-|---|---|---|
-| Strict mode holds *no* model client | Cannot self-heal mid-run | "Zero model calls" becomes structural, not a promise. No later edit can add one by accident |
-| Reject an artifact that embeds run data | Discovery fails more often | A silently wrong capability is worse than a failed recording |
-| Accessibility-first locators | More work than CSS selectors | Identity survives a redesign. Position and DOM structure do not |
-| One model for text and vision | Not the cheapest per call | One integration, one failure mode, one thing to reason about |
-| Validate everything at load | A longer, stricter schema | A bad artifact fails before the browser opens, not at step 6 with five real actions already taken |
-
----
-
 ## 2. Artifact Schema
 
 The artifact is the central design object. Everything else either produces one
@@ -324,17 +300,13 @@ Real, taken from `artifacts/lookup_product_price_v1.0.0.json`:
 | Field | Rule | Why |
 |---|---|---|
 | `capability_id` | `snake_case` | It is an identifier an agent calls, not prose |
-| `version` | strict semver | Minor for locator changes, major for flow changes |
-| `schema_version` | strict semver | The schema contract, versioned separately from the artifact |
+| `version` | strict semantic versioning | Minor for locator changes, major for flow changes |
+| `schema_version` | strict semantic versioning | The schema contract, versioned separately from the artifact |
 | `surface_type` | one of four values | Routes locator resolution (section 4) |
 | `recorded_by` | `agent` or `human_operator` | Provenance for review |
 | `input_parameters[].sensitive` | **strict boolean** | See below |
 | `output_schema` | must equal the set of extracted keys | Otherwise a "success" quietly drops a promised field |
 
-`sensitive` is checked as a **strict boolean**, not just typed as one. Pydantic
-would happily convert the string `"no"`, which is truthy, and quietly switch off
-redaction on a real password. The validator rejects `"true"`, `"yes"`, `1`, `0`
-and anything else that is not a real boolean.
 
 ### 2.4 Replay configuration
 
