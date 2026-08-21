@@ -104,20 +104,56 @@ run.
 
 ### What has been demonstrated
 
-```
-recorded with  "Sauce Labs Backpack"    ->  $29.99   6/6 steps, 0 model calls
-replayed with  "Sauce Labs Bike Light"  ->  $9.99    6/6 steps, 0 model calls
-```
+Here is what actually happened, in order.
 
-Each returned its own correct description. Evidence:
-`evidence/discovery_run_saucedemo.json`,
-`evidence/replay_run_sauce_labs_backpack.json`,
-`evidence/replay_run_sauce_labs_bike_light.json`.
+**Step 1: the model learned the task, once.** It was given a plain instruction,
+"log in to the store, open the product with the given name, and get its price
+and description", the address of the website, and one product name to work with:
+*Sauce Labs Backpack*. It opened a real browser, found the login box, logged in,
+found that product, opened it, and read the price off the page. Then it wrote
+down the six steps it had used. That took 7 calls to the model.
 
-The second line is the one that matters. Replaying with the value it was
-recorded with only proves the transcript replays. Replaying with a *different*
-value is what separates a reusable capability from a recording. Section 3
-describes the three ways I got that wrong before getting it right.
+**Step 2: those written-down steps were run again, on their own.** No model was
+involved this time, so nothing was deciding anything. The steps were simply
+followed.
+
+**Step 3: the same steps were run for a completely different product.**
+
+| Run | Product asked for | Price returned | Correct? | Model calls |
+|---|---|---|---|---|
+| Recording | Sauce Labs Backpack | $29.99 | yes | 7 |
+| Replay 1 | Sauce Labs Backpack | $29.99 | yes | **0** |
+| Replay 2 | **Sauce Labs Bike Light** | **$9.99** | **yes** | **0** |
+
+Replay 2 is the important one. **The saved steps had never seen the Bike Light.**
+They were written while looking at the Backpack. Yet they found the Bike Light,
+opened it, and returned its own price and its own description.
+
+### Why replay 2 is the real test
+
+Imagine the saved steps had accidentally recorded something specific to the
+Backpack. For example, "read the text that says $29.99", or "click the link
+called Sauce Labs Backpack".
+
+Those steps would still **pass** replay 1, because replay 1 asks for the
+Backpack. Everything would look fine.
+
+But replay 2 would then return **$29.99 for the Bike Light**. The run would
+report success. Six of six steps completed. No error anywhere. And the answer
+would be wrong.
+
+That is the failure this project is really guarding against, and it is
+dangerous precisely because nothing looks broken. Replay 2 is the test that
+catches it, and it is the reason the recording has to describe *where the price
+lives on the page* rather than *what the price said that day*.
+
+Section 3 describes three separate times I got this wrong before getting it
+right.
+
+**Evidence:** `evidence/discovery_run_saucedemo.json` (the recording),
+`evidence/replay_run_sauce_labs_backpack.json` and
+`evidence/replay_run_sauce_labs_bike_light.json` (the two replays). Each log
+records the model calls made, which is `0` for both replays.
 
 ### Component map
 
