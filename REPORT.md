@@ -186,10 +186,19 @@ lives on the page* rather than *what the price said that day*.
 Section 3 describes three separate times I got this wrong before getting it
 right.
 
-**Evidence:** `evidence/discovery_run_saucedemo.json` (the recording),
-`evidence/replay_run_sauce_labs_backpack.json` and
-`evidence/replay_run_sauce_labs_bike_light.json` (the two replays). Each log
-records the model calls made, which is `0` for both replays.
+**Evidence.** Every file below was produced by the system, not written by
+hand. `evidence/README.md` indexes the folder.
+
+| File | What it holds |
+|---|---|
+| `evidence/discovery_run_saucedemo.json` | The recording run, 6 steps, 7 model calls |
+| `evidence/replay_run_sauce_labs_backpack.json` | Replay 1, `llm_calls_made: 0` |
+| `evidence/replay_run_sauce_labs_bike_light.json` | Replay 2, `llm_calls_made: 0` |
+| `evidence/screenshots/*.png` | The final screen of each run above |
+| `artifacts/lookup_product_price_v1.0.0.json` | The capability the recording produced |
+
+Every log shows `***REDACTED***` where a credential was used, which is the
+redaction path running on real files rather than only in tests.
 
 ### Component map
 
@@ -1142,7 +1151,7 @@ stateDiagram-v2
   "step_id": 9,
   "reason": "dead end: page unchanged for 3 consecutive turns",
   "url_before": "https://demo.guru99.com/V4/manager/addcustomerpage.php",
-  "screenshot_before": "evidence/screenshots/handoff_step9_before_51dbf6.png",
+  "screenshot_before": "evidence/screenshots/escalation_handoff_guru99.png",
   "operator_url": "http://127.0.0.1:8080/operator?session_id=1a7d56c9c41f"
 }
 ```
