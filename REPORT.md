@@ -64,6 +64,42 @@ flowchart LR
     ART --> VAL
 ```
 
+### How the agent sees the page
+
+Two ways, tried in that order.
+
+**First, the accessibility tree.** Every browser already builds a clean text
+description of the page for screen readers. It lists what each thing *is* and
+what it is *called*, without any of the HTML noise:
+
+```
+- textbox "Username"
+- textbox "Password"
+- button "Login"
+```
+
+That is enough to act on. "Click the button called Login" is a stable
+instruction: it keeps working after the site is restyled, and it costs nothing
+to use.
+
+**Second, a screenshot, if the first way fails.** Older applications often
+build pages out of unlabelled boxes, so the accessibility tree shows nothing
+useful. Then the agent takes a picture of the screen, sends it to a
+vision-capable model, asks "where is this element", and clicks the pixel
+coordinates it gets back.
+
+| | Accessibility tree | Screenshot and vision |
+|---|---|---|
+| Finds elements by | What they are called | Where they are on screen |
+| Speed | Instant | A second or two |
+| Cost | Free | A model call |
+| Survives a redesign | Usually | No, positions move |
+| Used | Always tried first | Only when the first fails |
+
+The order matters. The first way is better in every respect, so it is always
+tried first, and the second exists only because some applications leave no other
+option. Section 2.6 covers this in full.
+
 ### Why the model only runs once
 
 The key design question is: **how often does the model run?**
@@ -185,21 +221,9 @@ a config change.
 **saucedemo.com** is a modern React store. It exercises the accessibility-tree
 path.
 
-I chose it after abandoning **OrangeHRM**, which was my first pick. Its demo
-data resets, so the employee I was asked to look up stopped existing partway
-through the work. Its employee search is a typeahead that silently rejects any
-value not picked from its dropdown. And 7 of 15 profile pages timed out while I
-was probing it. Building a graded deliverable on that was a risk with no upside.
-
 **demo.guru99.com** is a genuinely legacy bank: table-based layout, form inputs
 with no accessible name. It is here to force the screenshot fallback to do real
 work, and it did (sections 5 and 8).
-
-**A local zero-ARIA mock** (`mock/legacy_bank.html`) backs the legacy story in
-the test suite, so the Layer 2 tests do not depend on a public demo site being
-up. Two tests check the mock's premise instead of assuming it: a well-built page
-resolves by role, label, and placeholder, and the mock resolves by none of them.
-If the mock ever drifts into being accessible, that test fails and says so.
 
 ### Model access
 
